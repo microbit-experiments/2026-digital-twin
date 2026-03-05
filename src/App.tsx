@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import "./App.css";
 import MicrobitSVG from "./assets/microbit-drawing.svg?react";
 import { MicrobitDrawing } from "./microbitDrawing";
+import { createUniversalHexFlashDataSource, createWebUSBConnection } from "@microbit/microbit-connection"
 
 function App() {
   const microbitDrawing = useMemo(() => new MicrobitDrawing(), []);
@@ -13,9 +14,18 @@ function App() {
     microbitDrawing.reset();
   }, [microbitDrawing]);
   const handleConnect = useCallback(async () => {
-    // TODO: Follow documentation in https://github.com/microbit-foundation/microbit-connection
-    // to connect and flash the meet the micro:bit hex using USB. 
-    // Version to install: https://www.npmjs.com/package/@microbit/microbit-connection.
+    const usb = createWebUSBConnection();
+    await usb.connect();
+
+    const response = await fetch("/Meet-the-microbit-for-microbit-V2.hex");
+    const universalHexString = await response.text();
+
+    await usb.flash(createUniversalHexFlashDataSource(universalHexString), {
+      partial: true,
+      progress: (percentage: number | undefined) => {
+        console.log("Flashing: " + percentage);
+      },
+    });
   }, []);
   return (
     // TODO: User interface.
