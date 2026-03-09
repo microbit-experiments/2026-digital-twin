@@ -9,7 +9,13 @@ function App() {
   const handleButtonAMouseDown = useCallback(() => {
     microbitDrawing.highlightButtonA();
   }, [microbitDrawing]);
+  const handleButtonBMouseDown = useCallback(() => {
+    microbitDrawing.highlightButtonB();
+  }, [microbitDrawing]);
   const handleButtonAMouseUp = useCallback(() => {
+    microbitDrawing.reset();
+  }, [microbitDrawing]);
+  const handleButtonBMouseUp = useCallback(() => {
     microbitDrawing.reset();
   }, [microbitDrawing]);
   const handleConnect = useCallback(async () => {
@@ -21,12 +27,18 @@ function App() {
     // TODO: User interface.
     <VStack width="100%" height="100%">
       <Button onClick={handleConnect}>Connect</Button>
-      <MicrobitSVG width="400px" />
+      <MicrobitSVG width="500px" />
       <Button
         onMouseDown={handleButtonAMouseDown}
         onMouseUp={handleButtonAMouseUp}
       >
         Button A
+      </Button>
+      <Button
+        onMouseDown={handleButtonBMouseDown}
+        onMouseUp={handleButtonBMouseUp}
+      >
+        Button B
       </Button>
     </VStack>
   );
