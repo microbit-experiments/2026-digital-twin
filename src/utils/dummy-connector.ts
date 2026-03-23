@@ -31,19 +31,14 @@ export class DummyMicrobitConnector extends MicrobitConnector {
     private onShake?: () => void;
 
     private ledMatrixUpdate?: (row: number, col: number, val: boolean) => void;
-    private ledPollingFrequency?: number;
 
     private accelerometerUpdate?: (x: number, y: number, z: number) => void;
-    private accelerometerPollingFrequency?: number;
 
     private magnetometerUpdate?: (x: number, y: number, z: number) => void;
-    private magnetometerPollingFrequency?: number;
 
     private micLedUpdate?: (val: boolean) => void;
-    private micLedPollingFrequency?: number;
 
     private templateLedUpdate?: (val: boolean) => void;
-    private templateLedPollingFrequency?: number;
 
     public async handleConnect(): Promise<void> {
         console.log("[DummyConnector] handleConnect called");
@@ -96,19 +91,9 @@ export class DummyMicrobitConnector extends MicrobitConnector {
         console.log("[DummyConnector] onLogoUp handler registered");
     }
 
-    public setLedPolling(freq: number): void {
-        this.ledPollingFrequency = freq;
-        console.log(`[DummyConnector] ledPollingFrequency set to ${freq}`);
-    }
-
     public setLedMatrixUpdate(callback: (row: number, col: number, val: boolean) => void): void {
         this.ledMatrixUpdate = callback;
         console.log("[DummyConnector] ledMatrixUpdate handler registered");
-    }
-
-    public setAccelerometerPolling(freq: number): void {
-        this.accelerometerPollingFrequency = freq;
-        console.log(`[DummyConnector] accelerometerPollingFrequency set to ${freq}`);
     }
 
     public setAccelerometerUpdate(callback: (x: number, y: number, z: number) => void): void {
@@ -117,30 +102,15 @@ export class DummyMicrobitConnector extends MicrobitConnector {
         this.maybeStartAccelerometerLoop();
     }
 
-    public setMagnetometerPolling(freq: number): void {
-        this.magnetometerPollingFrequency = freq;
-        console.log(`[DummyConnector] magnetometerPollingFrequency set to ${freq}`);
-    }
-
     public setMagnetometerUpdate(callback: (x: number, y: number, z: number) => void): void {
         this.magnetometerUpdate = callback;
         console.log("[DummyConnector] magnetometerUpdate handler registered");
         this.maybeStartMagnetometerLoop();
     }
 
-    public setMicLedPolling(freq: number): void {
-        this.micLedPollingFrequency = freq;
-        console.log(`[DummyConnector] micLedPollingFrequency set to ${freq}`);
-    }
-
     public setMicLedUpdate(callback: (val: boolean) => void): void {
         this.micLedUpdate = callback;
         console.log("[DummyConnector] micLedUpdate handler registered");
-    }
-
-    public setTemplateLedPolling(freq: number): void {
-        this.templateLedPollingFrequency = freq;
-        console.log(`[DummyConnector] templateLedPollingFrequency set to ${freq}`);
     }
 
     public setTemplateLedUpdate(callback: (val: boolean) => void): void {

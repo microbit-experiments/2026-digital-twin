@@ -121,7 +121,6 @@ function App() {
       microbitDrawing.templateLed = active;
     });
 
-    mbConnector.setAccelerometerPolling(5);
     mbConnector.setAccelerometerUpdate((x, y, z) => {
       setAccelerometerData((previous) => {
         const next = [...previous, { time: Date.now(), x, y, z }];
@@ -129,7 +128,6 @@ function App() {
       });
     });
 
-    mbConnector.setMagnetometerPolling(5);
     mbConnector.setMagnetometerUpdate((x, y, z) => {
       setMagnetometerData((previous) => {
         const next = [...previous, { time: Date.now(), x, y, z }];
