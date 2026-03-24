@@ -1,4 +1,4 @@
-import { AddIcon, ArrowForwardIcon, ArrowRightIcon, InfoIcon } from "@chakra-ui/icons";
+import { ArrowForwardIcon, InfoIcon } from "@chakra-ui/icons";
 import {
   Button,
   Card,
