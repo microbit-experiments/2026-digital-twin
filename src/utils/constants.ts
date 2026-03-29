@@ -4,6 +4,8 @@ export const SvgSettings = {
         buttonAActive: "#00c800",
         buttonBInative: "#000000",
         buttonBActive: "#00c800",
+        touchLogoInactive: "#000000",
+        touchLogoActive: "#00c800"
     },
 
     selectors: {
@@ -12,6 +14,7 @@ export const SvgSettings = {
         setLeds: "#LEDsOn",
         setMicrophone: "#LitMicrophone",
         setTemplate: "#LitLEDTemplate",
+        touchLogo: "#LogoBackground"
     }
 };
 
