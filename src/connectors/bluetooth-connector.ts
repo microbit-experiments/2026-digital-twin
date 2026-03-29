@@ -1,12 +1,11 @@
 import { BaseConnector } from "./base-connector"
-import { type AccelerometerDataEvent, type ButtonEvent, type MicrobitWebBluetoothConnection } from "@microbit/microbit-connection";
+import { type AccelerometerDataEvent, type ButtonEvent, type MicrobitWebBluetoothConnection, createWebBluetoothConnection } from "@microbit/microbit-connection";
 
 export class BlueToothConnector extends BaseConnector {
-    private conn: MicrobitWebBluetoothConnection
+    private conn: MicrobitWebBluetoothConnection = createWebBluetoothConnection()
 
-    constructor(conn: MicrobitWebBluetoothConnection) {
+    constructor() {
         super();
-        this.conn = conn;
         this.buttonAListener = this.buttonAListener.bind(this);
         this.buttonBListener = this.buttonBListener.bind(this);
         this.accelerometerListener = this.accelerometerListener.bind(this);
