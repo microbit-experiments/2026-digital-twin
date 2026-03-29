@@ -7,12 +7,14 @@ export class MicrobitDrawing {
   private _cachedSetLEDs: HTMLElement | null;
   private _cachedSetMicrophone: HTMLElement | null;
   private _cachedTemplateSetLed: HTMLElement | null;
+  private _cachedTouchLogo: HTMLElement | null;
 
   private _buttonA: Boolean = false;
   private _buttonB: Boolean = false;
   private _leds: Array<Boolean> = new Array<false>(MicrobitConstants.leds.total);
   private _microphone: Boolean = false;
   private _templateLed: Boolean = false;
+  private _touchLogo: Boolean = false;
 
   constructor() {
     this._cachedButtonA = document.querySelector(SvgSettings.selectors.buttonA);
@@ -20,6 +22,7 @@ export class MicrobitDrawing {
     this._cachedSetLEDs = document.querySelector(SvgSettings.selectors.setLeds);
     this._cachedSetMicrophone = document.querySelector(SvgSettings.selectors.setMicrophone);
     this._cachedTemplateSetLed = document.querySelector(SvgSettings.selectors.setTemplate);
+    this._cachedTouchLogo = document.querySelector(SvgSettings.selectors.touchLogo);
   }
 
   private getButtonAEl(): HTMLElement {
@@ -72,6 +75,16 @@ export class MicrobitDrawing {
     return this._cachedTemplateSetLed;
   }
 
+  private getTouchLogoEl(): HTMLElement {
+    if (this._cachedTouchLogo)
+      return this._cachedTouchLogo;
+
+    this._cachedTouchLogo = document.querySelector(SvgSettings.selectors.touchLogo) as HTMLElement;
+    if (!this._cachedTouchLogo)
+      throw new Error("Touch Logo does not exist!");
+    return this._cachedTouchLogo;
+  }
+
   private fillButtonA(color: string) {
     const buttonACircle = this.getButtonAEl().querySelector("circle");
     if (!buttonACircle) return;
@@ -108,6 +121,13 @@ export class MicrobitDrawing {
     this._templateLed = val;
     if (val) this.getTemplateSetLedEl().style.display = "block";
     else this.getTemplateSetLedEl().style.display = "none";
+  }
+
+  private fillTouchLogo(color: string) {
+    const touchLogoInner = this.getTouchLogoEl();
+    if (!touchLogoInner) return;
+
+    touchLogoInner.style.fill = color;
   }
 
   public get buttonA(): Boolean {
@@ -160,6 +180,15 @@ export class MicrobitDrawing {
     this.setTemplateTo(val);
   }
 
+  public get touchLogo(): Boolean {
+    return this._touchLogo;
+  }
+
+  public set touchLogo(val: Boolean) {
+    this._touchLogo = val;
+    this.fillTouchLogo(val ? SvgSettings.colors.touchLogoActive : SvgSettings.colors.touchLogoInactive);
+  }
+
   public reset() {
     this.buttonA = false;
     this.buttonB = false;
@@ -169,5 +198,7 @@ export class MicrobitDrawing {
 
     this.microphone = false;
     this.templateLed = false;
+
+    this.touchLogo = false;
   }
 }
