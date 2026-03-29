@@ -29,7 +29,7 @@ import "./App.css";
 import MicrobitSVG from "./assets/microbit-drawing.svg?react";
 import ConnectGif from "./assets/connect-microbit.gif";
 import { MicrobitDrawing } from "./utils/microbitDrawing";
-import { DummyMicrobitConnector } from "./utils/dummy-connector";
+import { BlueToothConnector } from "./connectors/bluetooth-connector";
 import { createUniversalHexFlashDataSource, createWebUSBConnection } from "@microbit/microbit-connection";
 import { InfoPanelContent, type InfoPanelMode } from "./components/InfoPanels";
 import { SensorChart, type SensorPoint } from "./components/SensorChart";
@@ -39,7 +39,7 @@ function App() {
   const navbarHeight = "72px";
   const toast = useToast();
   const microbitDrawing = useMemo(() => new MicrobitDrawing(), []);
-  const mbConnector = useMemo(() => new DummyMicrobitConnector(), []);
+  const mbConnector = useMemo(() => new BlueToothConnector(), []);
   const [mode, setMode] = useState<"landing" | "connected">("landing");
   const [isConnecting, setIsConnecting] = useState(false);
   const [isMicrobitShaking, setIsMicrobitShaking] = useState(false);
