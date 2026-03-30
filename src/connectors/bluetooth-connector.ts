@@ -1,5 +1,5 @@
 import { BaseConnector } from "./base-connector"
-import { type AccelerometerDataEvent, type ButtonEvent, type MicrobitWebBluetoothConnection, type LedMatrix, createWebBluetoothConnection } from "@microbit/microbit-connection";
+import { type AccelerometerDataEvent, type ButtonEvent, type MicrobitWebBluetoothConnection, createWebBluetoothConnection } from "@microbit/microbit-connection";
 
 export class BlueToothConnector extends BaseConnector {
     private conn: MicrobitWebBluetoothConnection = createWebBluetoothConnection()
