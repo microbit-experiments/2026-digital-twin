@@ -1,5 +1,5 @@
 import { BaseConnector } from "./base-connector"
-import { type AccelerometerDataEvent, type ButtonEvent, type MicrobitWebBluetoothConnection, createWebBluetoothConnection } from "@microbit/microbit-connection";
+import { type AccelerometerDataEvent, type ButtonEvent, type MicrobitWebBluetoothConnection, type LedMatrix, createWebBluetoothConnection } from "@microbit/microbit-connection";
 
 export class BlueToothConnector extends BaseConnector {
     private conn: MicrobitWebBluetoothConnection = createWebBluetoothConnection()
@@ -10,14 +10,16 @@ export class BlueToothConnector extends BaseConnector {
         this.buttonBListener = this.buttonBListener.bind(this);
         this.accelerometerListener = this.accelerometerListener.bind(this);
         this.magnetometerListener = this.magnetometerListener.bind(this);
-    }
-
-    public async handleConnect(): Promise<void> {
-        await this.conn.connect();
         this.conn.addEventListener("buttonachanged", this.buttonAListener);
         this.conn.addEventListener("buttonbchanged", this.buttonBListener);
         this.conn.addEventListener("accelerometerdatachanged", this.accelerometerListener);
         this.conn.addEventListener("magnetometerdatachanged", this.magnetometerListener);
+        this.ledLoop();
+    }
+
+    public async handleConnect(): Promise<void> {
+        await this.conn.connect();
+        // TODO: Throw errors if invalid
     }
 
     private buttonAListener(event: ButtonEvent): void {
@@ -58,7 +60,7 @@ export class BlueToothConnector extends BaseConnector {
 
     private accelerometerListener(event: AccelerometerDataEvent): void {
         if (this.accelerometerUpdate) {
-            const {x, y, z} = event.data;
+            const { x, y, z } = event.data;
             this.log(`Invoking accelerometerUpdate ${x.toFixed(2)}, ${y.toFixed(2)}, ${z.toFixed(2)}`);
             this.accelerometerUpdate(x, y, z);
         }
@@ -66,9 +68,36 @@ export class BlueToothConnector extends BaseConnector {
 
     private magnetometerListener(event: AccelerometerDataEvent): void {
         if (this.magnetometerUpdate) {
-            const {x, y, z} = event.data;
+            const { x, y, z } = event.data;
             this.log(`Invoking magnetometerUpdate ${x.toFixed(2)}, ${y.toFixed(2)}, ${z.toFixed(2)}`);
             this.magnetometerUpdate(x, y, z);
+        }
+    }
+
+    private async ledLoop() {
+        const pollRate = 1;
+        const currentMatrix: boolean[][] = [];
+        for (var i = 0; i < 5; i++) {
+            currentMatrix.push(new Array(5));
+        }
+
+        while (1) {
+            // Poll at given rate
+            await new Promise(resolve => setTimeout(resolve, pollRate));
+            let matrix = await this.conn.getLedMatrix()
+            if (matrix == null) {
+                continue;
+            }
+
+            // Check for changes in the matrix
+            for (let i = 0; i < 5; i++) {
+                for (let j = 0; j < 5; j++) {
+                    if (matrix[i][j] != currentMatrix[i][j]) {
+                        currentMatrix[i][j] = matrix[i][j];
+                        this.ledMatrixUpdate?.(i, j, matrix[i][j]);
+                    }
+                }
+            }
         }
     }
 }
