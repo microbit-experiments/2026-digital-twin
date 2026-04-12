@@ -1,29 +1,56 @@
 import { BaseConnector } from "./base-connector"
 import { type MicrobitBluetoothConnection, createBluetoothConnection } from "@microbit/microbit-connection/bluetooth";
-import type { AccelerometerData, ButtonActionData, MagnetometerData, GestureData, TemperatureData } from "@microbit/microbit-connection";
-import { ButtonAction, GestureEvent } from "@microbit/microbit-connection";
+import type { AccelerometerData, ButtonActionData, MagnetometerData, GestureData, TemperatureData, ConnectionStatusChange, LedMatrix } from "@microbit/microbit-connection";
+import { ButtonAction, GestureEvent, ConnectionStatus } from "@microbit/microbit-connection";
 
 export class BlueToothConnector extends BaseConnector {
     private conn: MicrobitBluetoothConnection = createBluetoothConnection()
+    private connected: boolean = false;
+    private connWaiters: (() => void)[] = [];
 
     constructor() {
         super();
 
-        this.conn.addEventListener("buttonaaction", this.buttonAListener.bind(this))
-        this.conn.addEventListener("buttonbaction", this.buttonBListener.bind(this))
+        this.conn.addEventListener("status", this.statusListener.bind(this));
+
+        this.conn.addEventListener("buttonaaction", this.buttonAListener.bind(this));
+        this.conn.addEventListener("buttonbaction", this.buttonBListener.bind(this));
         this.conn.addEventListener("logoaction", this.logoListener.bind(this));
 
         this.conn.addEventListener("accelerometerdatachanged", this.accelerometerListener.bind(this));
         this.conn.addEventListener("magnetometerdatachanged", this.magnetometerListener.bind(this));
         this.conn.addEventListener("temperaturechanged", this.temperatureListener.bind(this));
-        
-        this.conn.addEventListener("gesturechanged", this.gestureListener.bind(this))
+
+        this.conn.addEventListener("gesturechanged", this.gestureListener.bind(this));
 
         this.ledLoop();
     }
 
     public async handleConnect(): Promise<void> {
         await this.conn.connect();
+    }
+
+    private async waitForConnect() {
+        await new Promise<void>(resolve => {
+            if (this.connected) { resolve(); }
+            else { this.connWaiters.push(resolve)}
+        })
+    }
+
+    private statusListener(data: ConnectionStatusChange) {
+        switch (data.status) {
+            case ConnectionStatus.Connected:
+                this.connected = true;
+                while (1) {
+                    let waiter = this.connWaiters.pop()
+                    if (waiter == null) break;
+                    waiter()
+                }
+                break;
+            default:
+                this.connected = false;
+                break;
+        }
     }
 
     private buttonAction(action: ButtonAction, upMethod?: () => void, downMethod?: () => void) {
@@ -71,40 +98,25 @@ export class BlueToothConnector extends BaseConnector {
         }
     }
 
+    private async updateLEDs() {
+        let matrix: LedMatrix;
+        try { matrix = await this.conn.getLedMatrix() } catch (e) { 
+            this.log(e);
+            return;
+        }
+        for (let i = 0; i < 5; i++) {
+            for (let j = 0; j < 5; j++) {
+                this.ledMatrixUpdate?.(i, j, matrix[i][j])
+            }
+        }
+    }
+
     private async ledLoop() {
         const pollRate = 1;
-        const currentMatrix: boolean[][] = [];
-        for (var i = 0; i < 5; i++) {
-            currentMatrix.push(new Array(5));
-        }
-
         while (1) {
-            // Poll at given rate
+            await this.waitForConnect()
+            this.updateLEDs()
             await new Promise(resolve => setTimeout(resolve, pollRate));
-
-            // Get LED Matrix data
-            let matrix;
-            try {
-                matrix = await this.conn.getLedMatrix()
-            } catch (e) {
-                this.log(e);
-                continue;
-            }
-
-            // Check for changes in the matrix
-            for (let i = 0; i < 5; i++) {
-                for (let j = 0; j < 5; j++) {
-                    if (matrix[i][j] != currentMatrix[i][j]) {
-                        // Call for each change in the matrix
-                        try { this.ledMatrixUpdate?.(i, j, matrix[i][j]); }
-                        catch (e) {
-                            console.log(e)
-                            continue
-                        }  // If there is an error, continue the loop
-                        currentMatrix[i][j] = matrix[i][j];
-                    }
-                }
-            }
         }
     }
 }
