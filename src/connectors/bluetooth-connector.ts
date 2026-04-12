@@ -30,8 +30,8 @@ export class BlueToothConnector extends BaseConnector {
         await this.conn.connect();
     }
 
-    private async waitForConnect() {
-        await new Promise<void>(resolve => {
+    private waitForConnect(): Promise<void> {
+        return new Promise<void>(resolve => {
             if (this.connected) { resolve(); }
             else { this.connWaiters.push(resolve)}
         })
