@@ -1,20 +1,23 @@
 import { BaseConnector } from "./base-connector"
 import { type MicrobitBluetoothConnection, createBluetoothConnection } from "@microbit/microbit-connection/bluetooth";
-import { type AccelerometerData, type ButtonActionData, type MagnetometerData, ButtonAction } from "@microbit/microbit-connection";
+import type { AccelerometerData, ButtonActionData, MagnetometerData, GestureData } from "@microbit/microbit-connection";
+import { ButtonAction, GestureEvent } from "@microbit/microbit-connection";
 
 export class BlueToothConnector extends BaseConnector {
     private conn: MicrobitBluetoothConnection = createBluetoothConnection()
 
     constructor() {
         super();
-        
+
         this.conn.addEventListener("buttonaaction", this.buttonAListener.bind(this))
         this.conn.addEventListener("buttonbaction", this.buttonBListener.bind(this))
         this.conn.addEventListener("logoaction", this.logoListener.bind(this));
 
+        this.conn.addEventListener("gesturechanged", this.gestureListener.bind(this))
+
         this.conn.addEventListener("accelerometerdatachanged", this.accelerometerListener.bind(this));
         this.conn.addEventListener("magnetometerdatachanged", this.magnetometerListener.bind(this));
-        
+
         this.ledLoop();
     }
 
@@ -46,13 +49,21 @@ export class BlueToothConnector extends BaseConnector {
     }
 
     private accelerometerListener(data: AccelerometerData): void {
-            const { x, y, z } = data;
+        const { x, y, z } = data;
         this.accelerometerUpdate?.(x, y, z);
     }
 
     private magnetometerListener(data: MagnetometerData): void {
-            const { x, y, z } = data;
+        const { x, y, z } = data;
         this.magnetometerUpdate?.(x, y, z);
+    }
+
+    private gestureListener(data: GestureData) {
+        switch (data.gesture) {
+            case GestureEvent.Shake:
+                this.onShake?.()
+                break;
+        }
     }
 
     private async ledLoop() {
@@ -81,7 +92,7 @@ export class BlueToothConnector extends BaseConnector {
                     if (matrix[i][j] != currentMatrix[i][j]) {
                         // Call for each change in the matrix
                         try { this.ledMatrixUpdate?.(i, j, matrix[i][j]); }
-                        catch (e) { 
+                        catch (e) {
                             console.log(e)
                             continue
                         }  // If there is an error, continue the loop
