@@ -1,6 +1,6 @@
 import { BaseConnector } from "./base-connector"
 import { type MicrobitBluetoothConnection, createBluetoothConnection } from "@microbit/microbit-connection/bluetooth";
-import type { AccelerometerData, ButtonActionData, MagnetometerData, GestureData } from "@microbit/microbit-connection";
+import type { AccelerometerData, ButtonActionData, MagnetometerData, GestureData, TemperatureData } from "@microbit/microbit-connection";
 import { ButtonAction, GestureEvent } from "@microbit/microbit-connection";
 
 export class BlueToothConnector extends BaseConnector {
@@ -13,10 +13,11 @@ export class BlueToothConnector extends BaseConnector {
         this.conn.addEventListener("buttonbaction", this.buttonBListener.bind(this))
         this.conn.addEventListener("logoaction", this.logoListener.bind(this));
 
-        this.conn.addEventListener("gesturechanged", this.gestureListener.bind(this))
-
         this.conn.addEventListener("accelerometerdatachanged", this.accelerometerListener.bind(this));
         this.conn.addEventListener("magnetometerdatachanged", this.magnetometerListener.bind(this));
+        this.conn.addEventListener("temperaturechanged", this.temperatureListener.bind(this));
+        
+        this.conn.addEventListener("gesturechanged", this.gestureListener.bind(this))
 
         this.ledLoop();
     }
@@ -56,6 +57,10 @@ export class BlueToothConnector extends BaseConnector {
     private magnetometerListener(data: MagnetometerData): void {
         const { x, y, z } = data;
         this.magnetometerUpdate?.(x, y, z);
+    }
+
+    private temperatureListener(data: TemperatureData): void {
+        this.temperatureUpdate?.(data.celsius);
     }
 
     private gestureListener(data: GestureData) {

@@ -10,8 +10,8 @@ export abstract class BaseConnector extends MicrobitConnector {
     protected ledMatrixUpdate?: (row: number, col: number, val: boolean) => void;
     
     protected accelerometerUpdate?: (x: number, y: number, z: number) => void;
-
     protected magnetometerUpdate?: (x: number, y: number, z: number) => void;
+    protected temperatureUpdate?: (x: number) => void;
 
     protected micLedUpdate?: (val: boolean) => void;
 
@@ -59,6 +59,11 @@ export abstract class BaseConnector extends MicrobitConnector {
     public setMagnetometerUpdate(callback: (x: number, y: number, z: number) => void): void {
         this.magnetometerUpdate = callback;
         this.log("magnetometerUpdate handler registered")
+    }
+
+    public setTemperatureUpdate(callback: (x: number) => void): void {
+        this.temperatureUpdate = callback;
+        this.log("temperatureUpdate handler registered")
     }
 
     public setTemplateLedUpdate(callback: (val: boolean) => void): void {

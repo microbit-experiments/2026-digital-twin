@@ -82,6 +82,11 @@ function App() {
   }, []);
 
   useEffect(() => {
+    // TODO Replace placeholder handlers
+    mbConnector.setTemperatureUpdate((x) => {
+      console.log("Temperature: ", x);
+    });
+
     mbConnector.setOnButtonADown(() => {
       microbitDrawing.buttonA = true;
       setInfoPanelMode("buttonA");

@@ -10,8 +10,8 @@ export abstract class MicrobitConnector {
     abstract setLedMatrixUpdate(callback: (row: number, col: number, val: boolean) => void): void;
 
     abstract setAccelerometerUpdate(callback: (x: number, y: number, z: number) => void): void;
-
     abstract setMagnetometerUpdate(callback: (x: number, y: number, z: number) => void): void;
+    abstract setTemperatureUpdate(callback: (x: number) => void): void;
 
     abstract setMicLedUpdate(callback: (val: boolean) => void): void;
 
