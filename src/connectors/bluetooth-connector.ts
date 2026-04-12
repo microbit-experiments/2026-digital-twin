@@ -1,6 +1,6 @@
 import { BaseConnector } from "./base-connector"
 import { type MicrobitBluetoothConnection, createBluetoothConnection } from "@microbit/microbit-connection/bluetooth";
-import { type AccelerometerData, type ButtonData, type ButtonActionData, type MagnetometerData, ButtonAction } from "@microbit/microbit-connection";
+import { type AccelerometerData, type ButtonActionData, type MagnetometerData, ButtonAction } from "@microbit/microbit-connection";
 
 export class BlueToothConnector extends BaseConnector {
     private conn: MicrobitBluetoothConnection = createBluetoothConnection()
@@ -14,11 +14,12 @@ export class BlueToothConnector extends BaseConnector {
         this.magnetometerListener = this.magnetometerListener.bind(this);
         this.logoListener = this.logoListener.bind(this);
 
-        this.conn.addEventListener("buttonachanged", this.buttonAListener);
-        this.conn.addEventListener("buttonbchanged", this.buttonBListener);
+        this.conn.addEventListener("buttonaaction", this.buttonAListener)
+        this.conn.addEventListener("buttonbaction", this.buttonBListener)
         this.conn.addEventListener("logoaction", this.logoListener);
         this.conn.addEventListener("accelerometerdatachanged", this.accelerometerListener);
         this.conn.addEventListener("magnetometerdatachanged", this.magnetometerListener);
+        
         this.ledLoop();
     }
 
@@ -43,44 +44,16 @@ export class BlueToothConnector extends BaseConnector {
         }
     }
 
-    private buttonAListener(data: ButtonData): void {
-        switch (data.state) {
-            case 0:  // NotPressed
-                if (this.buttonAUp) {
-                    this.log("Invoking buttonAUp")
-                    this.buttonAUp();
-                }
-                break;
-            case 1:  // ShortPress
-                if (this.buttonADown) {
-                    this.log("Invoking buttonADown")
-                    this.buttonADown();
-                }
-                break;
-            // LongPress (2) not included since there is no handler for it
-        }
+    private buttonAListener(data: ButtonActionData): void {
+        this.buttonAction(data.action, this.buttonAUp, this.buttonADown);
     }
 
-    private buttonBListener(data: ButtonData): void {
-        switch (data.state) {
-            case 0:  // NotPressed
-                if (this.buttonBUp) {
-                    this.log("Invoking buttonBUp")
-                    this.buttonBUp();
-                }
-                break;
-            case 1:  // ShortPress
-                if (this.buttonBDown) {
-                    this.log("Invoking buttonBDown")
-                    this.buttonBDown();
-                }
-                break;
-            // LongPress (2) not included since there is no handler for it
-        }
+    private buttonBListener(data: ButtonActionData): void {
+        this.buttonAction(data.action, this.buttonBUp, this.buttonBDown);
     }
 
     private logoListener(data: ButtonActionData): void {
-        this.buttonAction(data.action, this.onLogoUp, this.onLogoDown)
+        this.buttonAction(data.action, this.onLogoUp, this.onLogoDown);
     }
 
     private accelerometerListener(data: AccelerometerData): void {
