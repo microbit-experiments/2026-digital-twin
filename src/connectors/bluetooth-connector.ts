@@ -8,17 +8,12 @@ export class BlueToothConnector extends BaseConnector {
     constructor() {
         super();
         
-        this.buttonAListener = this.buttonAListener.bind(this);
-        this.buttonBListener = this.buttonBListener.bind(this);
-        this.accelerometerListener = this.accelerometerListener.bind(this);
-        this.magnetometerListener = this.magnetometerListener.bind(this);
-        this.logoListener = this.logoListener.bind(this);
+        this.conn.addEventListener("buttonaaction", this.buttonAListener.bind(this))
+        this.conn.addEventListener("buttonbaction", this.buttonBListener.bind(this))
+        this.conn.addEventListener("logoaction", this.logoListener.bind(this));
 
-        this.conn.addEventListener("buttonaaction", this.buttonAListener)
-        this.conn.addEventListener("buttonbaction", this.buttonBListener)
-        this.conn.addEventListener("logoaction", this.logoListener);
-        this.conn.addEventListener("accelerometerdatachanged", this.accelerometerListener);
-        this.conn.addEventListener("magnetometerdatachanged", this.magnetometerListener);
+        this.conn.addEventListener("accelerometerdatachanged", this.accelerometerListener.bind(this));
+        this.conn.addEventListener("magnetometerdatachanged", this.magnetometerListener.bind(this));
         
         this.ledLoop();
     }
