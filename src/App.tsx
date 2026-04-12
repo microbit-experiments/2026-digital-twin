@@ -30,7 +30,8 @@ import MicrobitSVG from "./assets/microbit-drawing.svg?react";
 import ConnectGif from "./assets/connect-microbit.gif";
 import { MicrobitDrawing } from "./utils/microbitDrawing";
 import { BlueToothConnector } from "./connectors/bluetooth-connector";
-import { createUniversalHexFlashDataSource, createWebUSBConnection } from "@microbit/microbit-connection";
+import { createUSBConnection } from "@microbit/microbit-connection/usb";
+import { createUniversalHexFlashDataSource } from "@microbit/microbit-connection/universal-hex";
 import { InfoPanelContent, type InfoPanelMode } from "./components/InfoPanels";
 import { SensorChart, type SensorPoint } from "./components/SensorChart";
 
@@ -157,7 +158,7 @@ function App() {
 
   const handleFlashDemo = () => {
     const flash = async () => {
-      const usb = createWebUSBConnection();
+      const usb = createUSBConnection();
       await usb.connect();
 
       const response = await fetch("/Meet-the-microbit-for-microbit-V2.hex");
@@ -165,9 +166,10 @@ function App() {
 
       await usb.flash(createUniversalHexFlashDataSource(universalHexString), {
         partial: true,
-        progress: (percentage: number | undefined) => {
-          console.log("Flashing: " + percentage);
-        },
+        // TODO: Add flashing percentage
+        // progress: (percentage: number | undefined) => {
+        //   console.log("Flashing: " + percentage);
+        // },
       });
     };
 

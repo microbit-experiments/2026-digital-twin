@@ -1,8 +1,9 @@
 import { BaseConnector } from "./base-connector"
-import { type AccelerometerDataEvent, type ButtonEvent, type MicrobitWebBluetoothConnection, createWebBluetoothConnection } from "@microbit/microbit-connection";
+import { type MicrobitBluetoothConnection, createBluetoothConnection } from "@microbit/microbit-connection/bluetooth";
+import { type AccelerometerData, type ButtonData, type MagnetometerData } from "@microbit/microbit-connection";
 
 export class BlueToothConnector extends BaseConnector {
-    private conn: MicrobitWebBluetoothConnection = createWebBluetoothConnection()
+    private conn: MicrobitBluetoothConnection = createBluetoothConnection()
 
     constructor() {
         super();
@@ -19,11 +20,10 @@ export class BlueToothConnector extends BaseConnector {
 
     public async handleConnect(): Promise<void> {
         await this.conn.connect();
-        // TODO: Throw errors if invalid
     }
 
-    private buttonAListener(event: ButtonEvent): void {
-        switch (event.state) {
+    private buttonAListener(data: ButtonData): void {
+        switch (data.state) {
             case 0:  // NotPressed
                 if (this.buttonAUp) {
                     this.log("Invoking buttonAUp")
@@ -40,8 +40,8 @@ export class BlueToothConnector extends BaseConnector {
         }
     }
 
-    private buttonBListener(event: ButtonEvent): void {
-        switch (event.state) {
+    private buttonBListener(data: ButtonData): void {
+        switch (data.state) {
             case 0:  // NotPressed
                 if (this.buttonBUp) {
                     this.log("Invoking buttonBUp")
@@ -58,17 +58,17 @@ export class BlueToothConnector extends BaseConnector {
         }
     }
 
-    private accelerometerListener(event: AccelerometerDataEvent): void {
+    private accelerometerListener(data: AccelerometerData): void {
         if (this.accelerometerUpdate) {
-            const { x, y, z } = event.data;
+            const { x, y, z } = data;
             this.log(`Invoking accelerometerUpdate ${x.toFixed(2)}, ${y.toFixed(2)}, ${z.toFixed(2)}`);
             this.accelerometerUpdate(x, y, z);
         }
     }
 
-    private magnetometerListener(event: AccelerometerDataEvent): void {
+    private magnetometerListener(data: MagnetometerData): void {
         if (this.magnetometerUpdate) {
-            const { x, y, z } = event.data;
+            const { x, y, z } = data;
             this.log(`Invoking magnetometerUpdate ${x.toFixed(2)}, ${y.toFixed(2)}, ${z.toFixed(2)}`);
             this.magnetometerUpdate(x, y, z);
         }
@@ -84,8 +84,13 @@ export class BlueToothConnector extends BaseConnector {
         while (1) {
             // Poll at given rate
             await new Promise(resolve => setTimeout(resolve, pollRate));
-            let matrix = await this.conn.getLedMatrix()
-            if (matrix == null) {
+
+            // Get LED Matrix data
+            let matrix;
+            try {
+                matrix = await this.conn.getLedMatrix()
+            } catch (e) {
+                this.log(e);
                 continue;
             }
 
@@ -93,8 +98,13 @@ export class BlueToothConnector extends BaseConnector {
             for (let i = 0; i < 5; i++) {
                 for (let j = 0; j < 5; j++) {
                     if (matrix[i][j] != currentMatrix[i][j]) {
+                        // Call for each change in the matrix
+                        try { this.ledMatrixUpdate?.(i, j, matrix[i][j]); }
+                        catch (e) { 
+                            console.log(e)
+                            continue
+                        }  // If there is an error, continue the loop
                         currentMatrix[i][j] = matrix[i][j];
-                        this.ledMatrixUpdate?.(i, j, matrix[i][j]);
                     }
                 }
             }

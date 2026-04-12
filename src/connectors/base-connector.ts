@@ -22,7 +22,7 @@ export abstract class BaseConnector extends MicrobitConnector {
 
     protected onShake?: () => void;
 
-    protected log(text: string) {
+    protected log(text: any) {
         console.log(`[${this.constructor.name}] ${text}`)
     }
 
