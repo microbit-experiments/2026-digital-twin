@@ -25,16 +25,10 @@ export class BlueToothConnector extends BaseConnector {
     private buttonAction(action: ButtonAction, upMethod?: () => void, downMethod?: () => void) {
         switch (action) {
             case ButtonAction.Up:
-                if (upMethod) {
-                    this.log("Invoking onLogoUp")
-                    upMethod();
-                }
+                upMethod?.();
                 break;
             case ButtonAction.Down:
-                if (downMethod) {
-                    this.log("Invoking onLogoDown");
-                    downMethod();
-                }
+                downMethod?.();
                 break;
         }
     }
@@ -52,19 +46,13 @@ export class BlueToothConnector extends BaseConnector {
     }
 
     private accelerometerListener(data: AccelerometerData): void {
-        if (this.accelerometerUpdate) {
             const { x, y, z } = data;
-            this.log(`Invoking accelerometerUpdate ${x.toFixed(2)}, ${y.toFixed(2)}, ${z.toFixed(2)}`);
-            this.accelerometerUpdate(x, y, z);
-        }
+        this.accelerometerUpdate?.(x, y, z);
     }
 
     private magnetometerListener(data: MagnetometerData): void {
-        if (this.magnetometerUpdate) {
             const { x, y, z } = data;
-            this.log(`Invoking magnetometerUpdate ${x.toFixed(2)}, ${y.toFixed(2)}, ${z.toFixed(2)}`);
-            this.magnetometerUpdate(x, y, z);
-        }
+        this.magnetometerUpdate?.(x, y, z);
     }
 
     private async ledLoop() {
