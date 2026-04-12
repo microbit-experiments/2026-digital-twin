@@ -1,18 +1,22 @@
 import { BaseConnector } from "./base-connector"
 import { type MicrobitBluetoothConnection, createBluetoothConnection } from "@microbit/microbit-connection/bluetooth";
-import { type AccelerometerData, type ButtonData, type MagnetometerData } from "@microbit/microbit-connection";
+import { type AccelerometerData, type ButtonData, type ButtonActionData, type MagnetometerData, ButtonAction } from "@microbit/microbit-connection";
 
 export class BlueToothConnector extends BaseConnector {
     private conn: MicrobitBluetoothConnection = createBluetoothConnection()
 
     constructor() {
         super();
+        
         this.buttonAListener = this.buttonAListener.bind(this);
         this.buttonBListener = this.buttonBListener.bind(this);
         this.accelerometerListener = this.accelerometerListener.bind(this);
         this.magnetometerListener = this.magnetometerListener.bind(this);
+        this.logoListener = this.logoListener.bind(this);
+
         this.conn.addEventListener("buttonachanged", this.buttonAListener);
         this.conn.addEventListener("buttonbchanged", this.buttonBListener);
+        this.conn.addEventListener("logoaction", this.logoListener);
         this.conn.addEventListener("accelerometerdatachanged", this.accelerometerListener);
         this.conn.addEventListener("magnetometerdatachanged", this.magnetometerListener);
         this.ledLoop();
@@ -20,6 +24,23 @@ export class BlueToothConnector extends BaseConnector {
 
     public async handleConnect(): Promise<void> {
         await this.conn.connect();
+    }
+
+    private buttonAction(action: ButtonAction, upMethod?: () => void, downMethod?: () => void) {
+        switch (action) {
+            case ButtonAction.Up:
+                if (upMethod) {
+                    this.log("Invoking onLogoUp")
+                    upMethod();
+                }
+                break;
+            case ButtonAction.Down:
+                if (downMethod) {
+                    this.log("Invoking onLogoDown");
+                    downMethod();
+                }
+                break;
+        }
     }
 
     private buttonAListener(data: ButtonData): void {
@@ -56,6 +77,10 @@ export class BlueToothConnector extends BaseConnector {
                 break;
             // LongPress (2) not included since there is no handler for it
         }
+    }
+
+    private logoListener(data: ButtonActionData): void {
+        this.buttonAction(data.action, this.onLogoUp, this.onLogoDown)
     }
 
     private accelerometerListener(data: AccelerometerData): void {
