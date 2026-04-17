@@ -92,8 +92,41 @@ export class BlueToothConnector extends BaseConnector {
 
     private gestureListener(data: GestureData) {
         switch (data.gesture) {
+            case GestureEvent.TiltUp:
+                this.onTiltUp?.();
+                break;
+            case GestureEvent.TiltDown:
+                this.onTiltDown?.();
+                break;
+            case GestureEvent.TiltLeft:
+                this.onTiltLeft?.();
+                break;
+            case GestureEvent.TiltRight:
+                this.onTiltRight?.();
+                break;
+            case GestureEvent.FaceUp:
+                this.onFaceUp?.();
+                break;
+            case GestureEvent.FaceDown:
+                this.onFaceDown?.();
+                break;
+            case GestureEvent.Freefall:
+                this.onFreefall?.();
+                break;
+            case GestureEvent.Acceleration3g:
+                this.onAcceleration3g?.();
+                break;
+            case GestureEvent.Acceleration6g:
+                this.onAcceleration6g?.();
+                break;
+            case GestureEvent.Acceleration8g:
+                this.onAcceleration8g?.();
+                break;
             case GestureEvent.Shake:
-                this.onShake?.()
+                this.onShake?.();
+                break;
+            case GestureEvent.Acceleration2g:
+                this.onAcceleration2g?.();
                 break;
         }
     }

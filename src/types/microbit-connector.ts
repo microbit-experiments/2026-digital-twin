@@ -20,5 +20,16 @@ export abstract class MicrobitConnector {
     abstract setOnLogoDown(callback: () => void): void;
     abstract setOnLogoUp(callback: () => void): void;
 
+    abstract setOnTiltUp(callback: () => void): void;
+    abstract setOnTiltDown(callback: () => void): void;
+    abstract setOnTiltLeft(callback: () => void): void;
+    abstract setOnTiltRight(callback: () => void): void;
+    abstract setOnFaceUp(callback: () => void): void;
+    abstract setOnFaceDown(callback: () => void): void;
+    abstract setOnFreefall(callback: () => void): void;
+    abstract setOnAcceleration3g(callback: () => void): void;
+    abstract setOnAcceleration6g(callback: () => void): void;
+    abstract setOnAcceleration8g(callback: () => void): void;
     abstract setOnShake(callback: () => void): void;
+    abstract setOnAcceleration2g(callback: () => void): void;
 }

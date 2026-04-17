@@ -87,6 +87,50 @@ function App() {
       console.log("Temperature: ", x);
     });
 
+    mbConnector.setOnTiltUp(() => {
+      console.log("tiltUp");
+    });
+
+    mbConnector.setOnTiltDown(() => {
+      console.log("tiltDown");
+    });
+
+    mbConnector.setOnTiltLeft(() => {
+      console.log("tiltLeft");
+    });
+
+    mbConnector.setOnTiltRight(() => {
+      console.log("tiltRight");
+    });
+
+    mbConnector.setOnFaceUp(() => {
+      console.log("faceUp");
+    });
+
+    mbConnector.setOnFaceDown(() => {
+      console.log("faceDown");
+    });
+
+    mbConnector.setOnFreefall(() => {
+      console.log("freefall");
+    });
+
+    mbConnector.setOnAcceleration3g(() => {
+      console.log("acceleration3g");
+    });
+
+    mbConnector.setOnAcceleration6g(() => {
+      console.log("acceleration6g");
+    });
+
+    mbConnector.setOnAcceleration8g(() => {
+      console.log("acceleration8g");
+    });
+
+    mbConnector.setOnAcceleration2g(() => {
+      console.log("acceleration2g");
+    });
+
     mbConnector.setOnButtonADown(() => {
       microbitDrawing.buttonA = true;
       setInfoPanelMode("buttonA");
