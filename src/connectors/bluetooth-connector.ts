@@ -1,6 +1,6 @@
 import { BaseConnector } from "./base-connector"
 import { type MicrobitBluetoothConnection, createBluetoothConnection } from "@microbit/microbit-connection/bluetooth";
-import type { AccelerometerData, ButtonActionData, MagnetometerData, GestureData, TemperatureData, ConnectionStatusChange, LedMatrix } from "@microbit/microbit-connection";
+import type { AccelerometerData, ButtonActionData, MagnetometerData, GestureData, TemperatureData, ConnectionStatusChange, LedMatrix, PinData, PinValue } from "@microbit/microbit-connection";
 import { ButtonAction, GestureEvent, ConnectionStatus } from "@microbit/microbit-connection";
 
 export class BlueToothConnector extends BaseConnector {
@@ -23,6 +23,8 @@ export class BlueToothConnector extends BaseConnector {
 
         this.conn.addEventListener("gesturechanged", this.gestureListener.bind(this));
 
+        this.conn.addEventListener("pinchanged", this.pinListener.bind(this));
+
         this.ledLoop();
     }
 
@@ -31,6 +33,11 @@ export class BlueToothConnector extends BaseConnector {
     }
 
     public async startUp(): Promise<void> {
+        // Configure pins for reading
+        // NOTE: This disables the `on pin PX pressed` block in MakeCode
+        await this.conn.setInputPins([0, 1, 2])
+        await this.conn.setAnalogPins([])
+        
         // Resume all loops waiting for a connect
         while (1) {
             let waiter = this.connWaiters.pop()
@@ -147,6 +154,14 @@ export class BlueToothConnector extends BaseConnector {
             case GestureEvent.Acceleration2g:
                 this.onAcceleration2g?.();
                 break;
+        }
+    }
+
+    private pinListener(data: PinData) {
+        // NOTE: Digital pin changes are incredibly sensitive
+        for (var value of data.data) {
+            this.log(`Pin: ${value.pin} Value: ${value.value}`);
+            // TODO: Call handlers
         }
     }
 
