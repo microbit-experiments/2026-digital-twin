@@ -1,6 +1,12 @@
 import { MicrobitConnector } from "../types/microbit-connector"
 
 export abstract class BaseConnector extends MicrobitConnector {
+    protected onNoAuthorizedDevice?: () => void;
+    protected onDisconnect?: () => void;
+    protected onConnect?: () => void;
+    protected onConnecting?: () => void;
+    protected onPause?: () => void;
+    
     protected buttonADown?: () => void;
     protected buttonAUp?: () => void;
 
@@ -36,6 +42,32 @@ export abstract class BaseConnector extends MicrobitConnector {
     protected log(text: any) {
         console.log(`[${this.constructor.name}] ${text}`)
     }
+
+    public setOnNoAuthorizedDevice(callback: () => void): void {
+        this.onNoAuthorizedDevice = callback;
+        this.log("onNoAuthorizedDevice handler registered")
+    }
+
+    public setOnDisconnect(callback: () => void): void {
+        this.onDisconnect = callback;
+        this.log("onDisconnect handler registered");
+    }
+
+    public setOnConnect(callback: () => void): void {
+        this.onConnect = callback;
+        this.log("onConnect handler registered");
+    }
+
+    public setOnConnecting(callback: () => void): void {
+        this.onConnecting = callback;
+        this.log("onConnecting handler registered");
+    }
+
+    public setOnPause(callback: () => void): void {
+        this.onPause = callback;
+        this.log("onPause handler registered");
+    }
+
 
     public setOnButtonADown(callback: () => void): void {
         this.buttonADown = callback;

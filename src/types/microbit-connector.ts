@@ -1,6 +1,12 @@
 export abstract class MicrobitConnector {
     abstract handleConnect(): Promise<void>;
 
+    abstract setOnNoAuthorizedDevice(callback: () => void): void;
+    abstract setOnDisconnect(callback: () => void): void;
+    abstract setOnConnect(callback: () => void): void;
+    abstract setOnConnecting(callback: () => void): void;
+    abstract setOnPause(callback: () => void): void;
+
     abstract setOnButtonADown(callback: () => void): void;
     abstract setOnButtonAUp(callback: () => void): void;
 

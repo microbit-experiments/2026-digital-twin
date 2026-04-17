@@ -131,6 +131,26 @@ function App() {
       console.log("acceleration2g");
     });
 
+    mbConnector.setOnNoAuthorizedDevice(() => {
+      console.log("NoAuthorizedDevice");
+    });
+
+    mbConnector.setOnDisconnect(() => {
+      console.log("Disconnect");
+    });
+
+    mbConnector.setOnConnect(() => {
+      console.log("Connect");
+    });
+
+    mbConnector.setOnConnecting(() => {
+      console.log("Connecting");
+    });
+
+    mbConnector.setOnPause(() => {
+      console.log("Pause");
+    });
+
     mbConnector.setOnButtonADown(() => {
       microbitDrawing.buttonA = true;
       setInfoPanelMode("buttonA");
