@@ -30,6 +30,15 @@ export class BlueToothConnector extends BaseConnector {
         await this.conn.connect();
     }
 
+    public async startUp(): Promise<void> {
+        // Resume all loops waiting for a connect
+        while (1) {
+            let waiter = this.connWaiters.pop()
+            if (waiter == null) break;
+            waiter()
+        }
+    }
+
     private waitForConnect(): Promise<void> {
         return new Promise<void>(resolve => {
             if (this.connected) { resolve(); }
@@ -37,7 +46,7 @@ export class BlueToothConnector extends BaseConnector {
         })
     }
 
-    private statusListener(data: ConnectionStatusChange) {
+    private async statusListener(data: ConnectionStatusChange) {
         switch (data.status) {
             case ConnectionStatus.NoAuthorizedDevice:
                 this.connected = false;
@@ -49,12 +58,7 @@ export class BlueToothConnector extends BaseConnector {
                 break;
             case ConnectionStatus.Connected:
                 this.connected = true;
-                // Resume all loops waiting for a connect
-                while (1) {
-                    let waiter = this.connWaiters.pop()
-                    if (waiter == null) break;
-                    waiter()
-                }
+                await this.startUp();
                 this.onConnect?.();
                 break;
             case ConnectionStatus.Connecting:
