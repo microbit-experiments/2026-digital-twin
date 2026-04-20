@@ -1,103 +1,174 @@
 import { BaseConnector } from "./base-connector"
-import { type AccelerometerDataEvent, type ButtonEvent, type MicrobitWebBluetoothConnection, createWebBluetoothConnection } from "@microbit/microbit-connection";
+import { type MicrobitBluetoothConnection, createBluetoothConnection } from "@microbit/microbit-connection/bluetooth";
+import type { AccelerometerData, ButtonActionData, MagnetometerData, GestureData, TemperatureData, ConnectionStatusChange, LedMatrix } from "@microbit/microbit-connection";
+import { ButtonAction, GestureEvent, ConnectionStatus } from "@microbit/microbit-connection";
 
 export class BlueToothConnector extends BaseConnector {
-    private conn: MicrobitWebBluetoothConnection = createWebBluetoothConnection()
+    private conn: MicrobitBluetoothConnection = createBluetoothConnection()
+    private connected: boolean = false;
+    private connWaiters: (() => void)[] = [];
 
     constructor() {
         super();
-        this.buttonAListener = this.buttonAListener.bind(this);
-        this.buttonBListener = this.buttonBListener.bind(this);
-        this.accelerometerListener = this.accelerometerListener.bind(this);
-        this.magnetometerListener = this.magnetometerListener.bind(this);
-        this.conn.addEventListener("buttonachanged", this.buttonAListener);
-        this.conn.addEventListener("buttonbchanged", this.buttonBListener);
-        this.conn.addEventListener("accelerometerdatachanged", this.accelerometerListener);
-        this.conn.addEventListener("magnetometerdatachanged", this.magnetometerListener);
+
+        this.conn.addEventListener("status", this.statusListener.bind(this));
+
+        this.conn.addEventListener("buttonaaction", this.buttonAListener.bind(this));
+        this.conn.addEventListener("buttonbaction", this.buttonBListener.bind(this));
+        this.conn.addEventListener("logoaction", this.logoListener.bind(this));
+
+        this.conn.addEventListener("accelerometerdatachanged", this.accelerometerListener.bind(this));
+        this.conn.addEventListener("magnetometerdatachanged", this.magnetometerListener.bind(this));
+        this.conn.addEventListener("temperaturechanged", this.temperatureListener.bind(this));
+
+        this.conn.addEventListener("gesturechanged", this.gestureListener.bind(this));
+
         this.ledLoop();
     }
 
     public async handleConnect(): Promise<void> {
         await this.conn.connect();
-        // TODO: Throw errors if invalid
     }
 
-    private buttonAListener(event: ButtonEvent): void {
-        switch (event.state) {
-            case 0:  // NotPressed
-                if (this.buttonAUp) {
-                    this.log("Invoking buttonAUp")
-                    this.buttonAUp();
-                }
-                break;
-            case 1:  // ShortPress
-                if (this.buttonADown) {
-                    this.log("Invoking buttonADown")
-                    this.buttonADown();
-                }
-                break;
-            // LongPress (2) not included since there is no handler for it
+    public async startUp(): Promise<void> {
+        // Resume all loops waiting for a connect
+        while (1) {
+            let waiter = this.connWaiters.pop()
+            if (waiter == null) break;
+            waiter()
         }
     }
 
-    private buttonBListener(event: ButtonEvent): void {
-        switch (event.state) {
-            case 0:  // NotPressed
-                if (this.buttonBUp) {
-                    this.log("Invoking buttonBUp")
-                    this.buttonBUp();
-                }
+    private waitForConnect(): Promise<void> {
+        return new Promise<void>(resolve => {
+            if (this.connected) { resolve(); }
+            else { this.connWaiters.push(resolve) }
+        })
+    }
+
+    private async statusListener(data: ConnectionStatusChange) {
+        switch (data.status) {
+            case ConnectionStatus.NoAuthorizedDevice:
+                this.connected = false;
+                this.onNoAuthorizedDevice?.();
                 break;
-            case 1:  // ShortPress
-                if (this.buttonBDown) {
-                    this.log("Invoking buttonBDown")
-                    this.buttonBDown();
-                }
+            case ConnectionStatus.Disconnected:
+                this.connected = false;
+                this.onDisconnect?.();
                 break;
-            // LongPress (2) not included since there is no handler for it
+            case ConnectionStatus.Connected:
+                this.connected = true;
+                await this.startUp();
+                this.onConnect?.();
+                break;
+            case ConnectionStatus.Connecting:
+                this.connected = false;
+                this.onConnecting?.();
+                break;
+            case ConnectionStatus.Paused:
+                this.connected = false;
+                this.onPause?.();
+                break;
         }
     }
 
-    private accelerometerListener(event: AccelerometerDataEvent): void {
-        if (this.accelerometerUpdate) {
-            const { x, y, z } = event.data;
-            this.log(`Invoking accelerometerUpdate ${x.toFixed(2)}, ${y.toFixed(2)}, ${z.toFixed(2)}`);
-            this.accelerometerUpdate(x, y, z);
+    private buttonAction(action: ButtonAction, upMethod?: () => void, downMethod?: () => void) {
+        switch (action) {
+            case ButtonAction.Up:
+                upMethod?.();
+                break;
+            case ButtonAction.Down:
+                downMethod?.();
+                break;
         }
     }
 
-    private magnetometerListener(event: AccelerometerDataEvent): void {
-        if (this.magnetometerUpdate) {
-            const { x, y, z } = event.data;
-            this.log(`Invoking magnetometerUpdate ${x.toFixed(2)}, ${y.toFixed(2)}, ${z.toFixed(2)}`);
-            this.magnetometerUpdate(x, y, z);
+    private buttonAListener(data: ButtonActionData): void {
+        this.buttonAction(data.action, this.buttonAUp, this.buttonADown);
+    }
+
+    private buttonBListener(data: ButtonActionData): void {
+        this.buttonAction(data.action, this.buttonBUp, this.buttonBDown);
+    }
+
+    private logoListener(data: ButtonActionData): void {
+        this.buttonAction(data.action, this.onLogoUp, this.onLogoDown);
+    }
+
+    private accelerometerListener(data: AccelerometerData): void {
+        const { x, y, z } = data;
+        this.accelerometerUpdate?.(x, y, z);
+    }
+
+    private magnetometerListener(data: MagnetometerData): void {
+        const { x, y, z } = data;
+        this.magnetometerUpdate?.(x, y, z);
+    }
+
+    private temperatureListener(data: TemperatureData): void {
+        this.temperatureUpdate?.(data.celsius);
+    }
+
+    private gestureListener(data: GestureData) {
+        switch (data.gesture) {
+            case GestureEvent.TiltUp:
+                this.onTiltUp?.();
+                break;
+            case GestureEvent.TiltDown:
+                this.onTiltDown?.();
+                break;
+            case GestureEvent.TiltLeft:
+                this.onTiltLeft?.();
+                break;
+            case GestureEvent.TiltRight:
+                this.onTiltRight?.();
+                break;
+            case GestureEvent.FaceUp:
+                this.onFaceUp?.();
+                break;
+            case GestureEvent.FaceDown:
+                this.onFaceDown?.();
+                break;
+            case GestureEvent.Freefall:
+                this.onFreefall?.();
+                break;
+            case GestureEvent.Acceleration3g:
+                this.onAcceleration3g?.();
+                break;
+            case GestureEvent.Acceleration6g:
+                this.onAcceleration6g?.();
+                break;
+            case GestureEvent.Acceleration8g:
+                this.onAcceleration8g?.();
+                break;
+            case GestureEvent.Shake:
+                this.onShake?.();
+                break;
+            case GestureEvent.Acceleration2g:
+                this.onAcceleration2g?.();
+                break;
+        }
+    }
+
+    private async updateLEDs() {
+        let matrix: LedMatrix;
+        try { matrix = await this.conn.getLedMatrix() } catch (e) {
+            this.log(e);
+            return;
+        }
+        for (let i = 0; i < 5; i++) {
+            for (let j = 0; j < 5; j++) {
+                this.ledMatrixUpdate?.(i, j, matrix[i][j])
+            }
         }
     }
 
     private async ledLoop() {
         const pollRate = 1;
-        const currentMatrix: boolean[][] = [];
-        for (var i = 0; i < 5; i++) {
-            currentMatrix.push(new Array(5));
-        }
-
         while (1) {
-            // Poll at given rate
+            await this.waitForConnect()
+            this.updateLEDs()
             await new Promise(resolve => setTimeout(resolve, pollRate));
-            let matrix = await this.conn.getLedMatrix()
-            if (matrix == null) {
-                continue;
-            }
-
-            // Check for changes in the matrix
-            for (let i = 0; i < 5; i++) {
-                for (let j = 0; j < 5; j++) {
-                    if (matrix[i][j] != currentMatrix[i][j]) {
-                        currentMatrix[i][j] = matrix[i][j];
-                        this.ledMatrixUpdate?.(i, j, matrix[i][j]);
-                    }
-                }
-            }
         }
     }
 }
