@@ -1,7 +1,8 @@
 import { BaseConnector } from "./base-connector"
 import { type MicrobitBluetoothConnection, createBluetoothConnection } from "@microbit/microbit-connection/bluetooth";
-import type { AccelerometerData, ButtonActionData, MagnetometerData, GestureData, TemperatureData, ConnectionStatusChange, LedMatrix } from "@microbit/microbit-connection";
+import type { AccelerometerData, ButtonActionData, MagnetometerData, GestureData, TemperatureData, ConnectionStatusChange, LedMatrix, MicrobitEventData } from "@microbit/microbit-connection";
 import { ButtonAction, GestureEvent, ConnectionStatus } from "@microbit/microbit-connection";
+import { EventSourceID, MicrophoneState } from "../types/event-data";
 
 export class BlueToothConnector extends BaseConnector {
     private conn: MicrobitBluetoothConnection = createBluetoothConnection()
@@ -22,6 +23,7 @@ export class BlueToothConnector extends BaseConnector {
         this.conn.addEventListener("temperaturechanged", this.temperatureListener.bind(this));
 
         this.conn.addEventListener("gesturechanged", this.gestureListener.bind(this));
+        this.conn.addEventListener("microbitevent", this.eventListener.bind(this))
 
         this.ledLoop();
     }
@@ -147,6 +149,27 @@ export class BlueToothConnector extends BaseConnector {
             case GestureEvent.Acceleration2g:
                 this.onAcceleration2g?.();
                 break;
+        }
+    }
+
+    private microphoneEvent(data: MicrophoneState) {
+        switch (data) {
+            case MicrophoneState.Off:
+                this.micLedUpdate?.(false);
+                break;
+            case MicrophoneState.On:
+                this.micLedUpdate?.(true);
+                break;
+        }
+    }
+
+    private eventListener(data: MicrobitEventData) {
+        switch (data.source) {
+            case EventSourceID.Microphone:
+                this.microphoneEvent(data.value as MicrophoneState);
+                break;
+            default:
+                this.log(`Unrecognised Source: ${data.source}`)
         }
     }
 
