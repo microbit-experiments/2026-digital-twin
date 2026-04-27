@@ -33,6 +33,10 @@ export class BlueToothConnector extends BaseConnector {
     }
 
     public async startUp(): Promise<void> {
+        // Subscribe to events
+        await this.conn.subscribeToEvent(EventSourceID.Microphone, MicrophoneState.On)
+        await this.conn.subscribeToEvent(EventSourceID.Microphone, MicrophoneState.Off)
+        
         // Resume all loops waiting for a connect
         while (1) {
             let waiter = this.connWaiters.pop()

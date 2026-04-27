@@ -4,7 +4,7 @@ export const EventSourceID = {
 export type EventSourceID = (typeof EventSourceID)[keyof typeof EventSourceID];
 
 export const MicrophoneState = {
-    Off: 0,
-    On: 1
+    On: 1,
+    Off: 2,
 };
 export type MicrophoneState = (typeof MicrophoneState)[keyof typeof MicrophoneState];
