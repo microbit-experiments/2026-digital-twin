@@ -29,8 +29,9 @@ import "./App.css";
 import MicrobitSVG from "./assets/microbit-drawing.svg?react";
 import ConnectGif from "./assets/connect-microbit.gif";
 import { MicrobitDrawing } from "./utils/microbitDrawing";
-import { DummyMicrobitConnector } from "./utils/dummy-connector";
-import { createUniversalHexFlashDataSource, createWebUSBConnection } from "@microbit/microbit-connection";
+import { BlueToothConnector } from "./connectors/bluetooth-connector";
+import { createUSBConnection } from "@microbit/microbit-connection/usb";
+import { createUniversalHexFlashDataSource } from "@microbit/microbit-connection/universal-hex";
 import { InfoPanelContent, type InfoPanelMode } from "./components/InfoPanels";
 import { SensorChart, type SensorPoint } from "./components/SensorChart";
 
@@ -39,7 +40,7 @@ function App() {
   const navbarHeight = "72px";
   const toast = useToast();
   const microbitDrawing = useMemo(() => new MicrobitDrawing(), []);
-  const mbConnector = useMemo(() => new DummyMicrobitConnector(), []);
+  const mbConnector = useMemo(() => new BlueToothConnector(), []);
   const [mode, setMode] = useState<"landing" | "connected">("landing");
   const [isConnecting, setIsConnecting] = useState(false);
   const [isMicrobitShaking, setIsMicrobitShaking] = useState(false);
@@ -81,6 +82,75 @@ function App() {
   }, []);
 
   useEffect(() => {
+    // TODO Replace placeholder handlers
+    mbConnector.setTemperatureUpdate((x) => {
+      console.log("Temperature: ", x);
+    });
+
+    mbConnector.setOnTiltUp(() => {
+      console.log("tiltUp");
+    });
+
+    mbConnector.setOnTiltDown(() => {
+      console.log("tiltDown");
+    });
+
+    mbConnector.setOnTiltLeft(() => {
+      console.log("tiltLeft");
+    });
+
+    mbConnector.setOnTiltRight(() => {
+      console.log("tiltRight");
+    });
+
+    mbConnector.setOnFaceUp(() => {
+      console.log("faceUp");
+    });
+
+    mbConnector.setOnFaceDown(() => {
+      console.log("faceDown");
+    });
+
+    mbConnector.setOnFreefall(() => {
+      console.log("freefall");
+    });
+
+    mbConnector.setOnAcceleration3g(() => {
+      console.log("acceleration3g");
+    });
+
+    mbConnector.setOnAcceleration6g(() => {
+      console.log("acceleration6g");
+    });
+
+    mbConnector.setOnAcceleration8g(() => {
+      console.log("acceleration8g");
+    });
+
+    mbConnector.setOnAcceleration2g(() => {
+      console.log("acceleration2g");
+    });
+
+    mbConnector.setOnNoAuthorizedDevice(() => {
+      console.log("NoAuthorizedDevice");
+    });
+
+    mbConnector.setOnDisconnect(() => {
+      console.log("Disconnect");
+    });
+
+    mbConnector.setOnConnect(() => {
+      console.log("Connect");
+    });
+
+    mbConnector.setOnConnecting(() => {
+      console.log("Connecting");
+    });
+
+    mbConnector.setOnPause(() => {
+      console.log("Pause");
+    });
+
     mbConnector.setOnButtonADown(() => {
       microbitDrawing.buttonA = true;
       setInfoPanelMode("buttonA");
@@ -157,7 +227,7 @@ function App() {
 
   const handleFlashDemo = () => {
     const flash = async () => {
-      const usb = createWebUSBConnection();
+      const usb = createUSBConnection();
       await usb.connect();
 
       const response = await fetch("/Meet-the-microbit-for-microbit-V2.hex");
@@ -165,9 +235,10 @@ function App() {
 
       await usb.flash(createUniversalHexFlashDataSource(universalHexString), {
         partial: true,
-        progress: (percentage: number | undefined) => {
-          console.log("Flashing: " + percentage);
-        },
+        // TODO: Add flashing percentage
+        // progress: (percentage: number | undefined) => {
+        //   console.log("Flashing: " + percentage);
+        // },
       });
     };
 
