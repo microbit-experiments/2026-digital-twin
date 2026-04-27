@@ -384,8 +384,8 @@ function App() {
               boxShadow="md"
             >
               <Stack spacing={5}>
-                <SensorChart data={accelerometerData} title="Accelerometer (x, y, z)" showLegend={false} />
-                <SensorChart data={magnetometerData} title="Magnetometer (x, y, z)" />
+                <SensorChart data={accelerometerData} title="Accelerometer (x, y, z)" maxVal={2000} showLegend={false} />
+                <SensorChart data={magnetometerData} title="Magnetometer (x, y, z)" maxVal={50000}/>
               </Stack>
             </Box>
           </Flex>

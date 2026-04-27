@@ -12,10 +12,11 @@ export type SensorPoint = {
 type SensorChartProps = {
   data: SensorPoint[];
   title: string;
+  maxVal: number;
   showLegend?: boolean;
 };
 
-export function SensorChart({ data, title, showLegend = true }: SensorChartProps) {
+export function SensorChart({ data, title, maxVal, showLegend = true }: SensorChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [chartWidth, setChartWidth] = useState(0);
@@ -64,7 +65,7 @@ export function SensorChart({ data, title, showLegend = true }: SensorChartProps
       .domain([minTime, maxTime === minTime ? minTime + 1000 : maxTime])
       .range([margin.left, margin.left + innerWidth]);
 
-    const yScale = d3.scaleLinear().domain([-1.2, 1.2]).range([margin.top + innerHeight, margin.top]);
+    const yScale = d3.scaleLinear().domain([-maxVal, maxVal]).range([margin.top + innerHeight, margin.top]);
 
     const xAxis = d3.axisBottom(xScale).ticks(0).tickSize(0);
     const yAxis = d3.axisLeft(yScale).ticks(5);
