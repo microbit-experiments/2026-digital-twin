@@ -47,6 +47,7 @@ export function SensorChart({ data, title, maxVal, showLegend = true }: SensorCh
     svg.attr("width", chartWidth).attr("height", height).attr("viewBox", `0 0 ${chartWidth} ${height}`);
 
     if (data.length === 0) {
+      const normalizedTitle = title.toLowerCase();
       svg
         .append("text")
         .attr("x", chartWidth / 2)
@@ -54,7 +55,7 @@ export function SensorChart({ data, title, maxVal, showLegend = true }: SensorCh
         .attr("text-anchor", "middle")
         .attr("fill", "#718096")
         .style("font-size", "13px")
-        .text("Waiting for accelerometer samples...");
+        .text(`Waiting for ${normalizedTitle} samples...`);
       return;
     }
 

@@ -1,0 +1,62 @@
+function sendButton(button: string) {
+    serial.writeLine("{\"type\":\"button\",\"button\":\"" + button + "\",\"event\":\"click\"}")
+}
+
+function sendGesture(event: string) {
+    serial.writeLine("{\"type\":\"gesture\",\"event\":\"" + event + "\"}")
+}
+
+input.onButtonPressed(Button.A, function () {
+    sendButton("A")
+})
+
+input.onButtonPressed(Button.B, function () {
+    sendButton("B")
+})
+
+input.onButtonPressed(Button.AB, function () {
+    sendButton("AB")
+})
+
+input.onGesture(Gesture.Shake, function () {
+    sendGesture("shake")
+})
+
+input.onGesture(Gesture.TiltLeft, function () {
+    sendGesture("tiltLeft")
+})
+
+input.onGesture(Gesture.TiltRight, function () {
+    sendGesture("tiltRight")
+})
+
+input.onGesture(Gesture.LogoUp, function () {
+    sendGesture("faceUp")
+})
+
+input.onGesture(Gesture.LogoDown, function () {
+    sendGesture("faceDown")
+})
+
+serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {
+    let command = serial.readLine()
+    if (command.indexOf("\"type\":\"show_text\"") >= 0) {
+        basic.showString("Hi")
+    } else if (command.indexOf("\"type\":\"clear_display\"") >= 0) {
+        basic.clearScreen()
+    } else if (command.indexOf("\"type\":\"set_led\"") >= 0) {
+        led.plot(2, 2)
+    } else if (command.indexOf("\"type\":\"ping\"") >= 0) {
+        serial.writeLine("{\"type\":\"button\",\"button\":\"AB\",\"event\":\"click\",\"label\":\"Pong\"}")
+    }
+})
+
+basic.showIcon(IconNames.Heart)
+serial.writeLine("{\"type\":\"button\",\"button\":\"AB\",\"event\":\"click\",\"label\":\"Serial ready\"}")
+
+basic.forever(function () {
+    serial.writeLine("{\"type\":\"accelerometer\",\"x\":" + input.acceleration(Dimension.X) + ",\"y\":" + input.acceleration(Dimension.Y) + ",\"z\":" + input.acceleration(Dimension.Z) + "}")
+    serial.writeLine("{\"type\":\"magnetometer\",\"x\":" + input.magneticForce(Dimension.X) + ",\"y\":" + input.magneticForce(Dimension.Y) + ",\"z\":" + input.magneticForce(Dimension.Z) + "}")
+    serial.writeLine("{\"type\":\"temperature\",\"celsius\":" + input.temperature() + "}")
+    basic.pause(250)
+})

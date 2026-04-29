@@ -18,7 +18,12 @@ export type InputBehaviourKind =
     | "tiltRight"
     | "faceUp"
     | "faceDown"
-    | "freefall";
+    | "freefall"
+    | "shake"
+    | "acceleration2g"
+    | "acceleration3g"
+    | "acceleration6g"
+    | "acceleration8g";
 
 export type InputBehaviour = {
     button: InputButton;

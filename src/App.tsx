@@ -35,9 +35,7 @@ import MicrobitSVG from "./assets/microbit-drawing.svg?react";
 import MicrobitLogo from "./assets/microbit-logo.svg";
 import ConnectGif from "./assets/connect-microbit.gif";
 import { MicrobitDrawing } from "./utils/microbitDrawing";
-import { BlueToothConnector } from "./connectors/bluetooth-connector";
-import { createUSBConnection } from "@microbit/microbit-connection/usb";
-import { createUniversalHexFlashDataSource } from "@microbit/microbit-connection/universal-hex";
+import { UsbSerialConnector } from "./connectors/usb-serial-connector";
 import {
   getInfoPanelTitle,
   InfoPanelContent,
@@ -45,6 +43,38 @@ import {
 } from "./components/InfoPanels";
 import { SensorChart, type SensorPoint } from "./components/SensorChart";
 import type { InputBehaviour, InputBehaviourKind, InputButton } from "./types/microbit-connector";
+
+function getConnectErrorDescription(error: unknown): string {
+  const maybeDeviceError = error as { code?: string; message?: string };
+  if (maybeDeviceError && typeof maybeDeviceError.message === "string") {
+    if (maybeDeviceError.code === "unsupported") {
+      return "WebUSB is not supported in this browser. Use Chrome or Edge on localhost/HTTPS.";
+    }
+    if (maybeDeviceError.code === "no-device-selected") {
+      return "You cancelled the USB device picker. Please select your micro:bit to connect.";
+    }
+    if (maybeDeviceError.code === "device-in-use") {
+      return "The micro:bit is currently in use by another app/tab. Close the other connection and retry.";
+    }
+    if (maybeDeviceError.code === "permission-denied") {
+      return "USB permission was denied. Ensure this origin is allowed to access USB.";
+    }
+    if (maybeDeviceError.code === "connection-error" || maybeDeviceError.code === "device-disconnected") {
+      return `${maybeDeviceError.message}. Try unplugging/replugging the micro:bit and retry.`;
+    }
+    if (maybeDeviceError.code === "firmware-update-required") {
+      return "The micro:bit firmware is not compatible. Update micro:bit firmware/DAPLink first.";
+    }
+
+    return maybeDeviceError.message;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "Unknown error while connecting to the micro:bit.";
+}
 
 function formatInputButton(button: InputButton) {
   if (button === "Logo") return "Logo";
@@ -92,14 +122,42 @@ function isDisplayableInput(input: InputBehaviour) {
   return true;
 }
 
+function getDynamicSensorMax(
+  data: SensorPoint[],
+  fallback: number,
+  minimum: number,
+  maximum: number,
+  margin = 1.2,
+): number {
+  if (data.length === 0) return fallback;
+
+  let observedMax = 0;
+  for (const point of data) {
+    const sampleMax = Math.max(Math.abs(point.x), Math.abs(point.y), Math.abs(point.z));
+    if (sampleMax > observedMax) observedMax = sampleMax;
+  }
+
+  if (!Number.isFinite(observedMax) || observedMax <= 0) {
+    return minimum;
+  }
+
+  const scaled = Math.ceil(observedMax * margin);
+  const clamped = Math.min(Math.max(scaled, minimum), maximum);
+  const step = 50;
+
+  return Math.ceil(clamped / step) * step;
+}
+
 function App() {
   const desktopSidebarWidth = "420px";
   const navbarHeight = "88px";
   const toast = useToast();
   const microbitDrawing = useMemo(() => new MicrobitDrawing(), []);
-  const mbConnector = useMemo(() => new BlueToothConnector(), []);
+  const mbConnector = useMemo(() => new UsbSerialConnector(), []);
   const [mode, setMode] = useState<"landing" | "connected">("landing");
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isFlashing, setIsFlashing] = useState(false);
+  const [isSendingCommand, setIsSendingCommand] = useState(false);
   const [isMicrobitShaking, setIsMicrobitShaking] = useState(false);
   const [infoPanelMode, setInfoPanelMode] = useState<InfoPanelMode>("default");
   const [latestInputBehaviour, setLatestInputBehaviour] = useState<InputBehaviour | null>(null);
@@ -351,43 +409,66 @@ function App() {
     if (isConnecting) return;
     setIsConnecting(true);
     const connectPromise = mbConnector.handleConnect();
-
-    toast.promise(connectPromise, {
-      loading: { title: "Connecting to the Micro:bit…" },
-      success: { title: "Dummy Micro:bit is connected!" },
-      error: { title: "Unable to connect to the dummy Micro:bit." },
+    const toastId = toast({
+      title: "Connecting over USB...",
+      status: "loading",
+      isClosable: false,
+      duration: null,
     });
 
     connectPromise
-      .then(() => setMode("connected"))
-      .catch(() => setMode("landing"))
+      .then(() => {
+        toast.update(toastId, {
+          title: "Micro:bit USB serial is connected.",
+          status: "success",
+          duration: 2500,
+          isClosable: true,
+        });
+        setMode("connected");
+      })
+      .catch((error) => {
+        toast.update(toastId, {
+          title: "Unable to connect to the micro:bit over USB.",
+          description: getConnectErrorDescription(error),
+          status: "error",
+          duration: 9000,
+          isClosable: true,
+        });
+        setMode("landing");
+      })
       .finally(() => setIsConnecting(false));
   }, [mbConnector, isConnecting, toast]);
 
   const handleFlashDemo = () => {
-    const flash = async () => {
-      const usb = createUSBConnection();
-      await usb.connect();
+    if (isFlashing) return;
 
-      const response = await fetch("/Meet-the-microbit-for-microbit-V2.hex");
-      const universalHexString = await response.text();
-
-      await usb.flash(createUniversalHexFlashDataSource(universalHexString), {
-        partial: true,
-        // TODO: Add flashing percentage
-        // progress: (percentage: number | undefined) => {
-        //   console.log("Flashing: " + percentage);
-        // },
-      });
-    };
-
-    const flashingPromise = flash();
+    setIsFlashing(true);
+    const flashingPromise = mbConnector.flashDemoProgram();
 
     toast.promise(flashingPromise, {
-      loading: { title: "Flashing..." },
-      success: { title: "Demo Program Successfully Flashed!" },
-      error: { title: "Failed to Flash Demo Program :(" }
-    })
+      loading: { title: "Flashing demo program..." },
+      success: { title: "Demo program flashed. Listening on USB serial." },
+      error: { title: "Failed to flash demo program." }
+    });
+
+    flashingPromise
+      .then(() => setMode("connected"))
+      .finally(() => setIsFlashing(false));
+  };
+
+  const handleSendHello = () => {
+    if (isSendingCommand) return;
+
+    setIsSendingCommand(true);
+    const commandPromise = mbConnector.sendCommand({ type: "show_text", text: "Hi" });
+
+    toast.promise(commandPromise, {
+      loading: { title: "Sending command..." },
+      success: { title: "Command sent over USB serial." },
+      error: { title: "Unable to send command." },
+    });
+
+    commandPromise.finally(() => setIsSendingCommand(false));
   };
 
   const isDesktopSidebarVisible = mode === "connected" && Boolean(isLargeScreen);
@@ -467,9 +548,21 @@ function App() {
           variant="solid"
           boxShadow="sm"
           onClick={handleFlashDemo}
+          isLoading={isFlashing}
         >
           Flash Demo
         </Button>
+        {mode === "connected" && (
+          <Button
+            colorScheme="blue"
+            variant="outline"
+            onClick={handleSendHello}
+            isLoading={isSendingCommand}
+            ml={2}
+          >
+            Send Hi
+          </Button>
+        )}
         {mode === "connected" && (
           <IconButton
             aria-label="Toggle info panel"
@@ -649,7 +742,7 @@ function App() {
                   </HStack>
                 </Box>
 
-                <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
+              <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
                   <Box
                     bg="white"
                     border="1px solid"
@@ -675,12 +768,12 @@ function App() {
                     py={5}
                     boxShadow="0 10px 24px rgba(15, 23, 42, 0.06)"
                   >
-                    <SensorChart
-                      data={magnetometerData}
-                      title="Magnetometer"
-                      maxVal={50000}
-                    />
-                  </Box>
+                  <SensorChart
+                    data={magnetometerData}
+                    title="Magnetometer"
+                    maxVal={getDynamicSensorMax(magnetometerData, 3000, 200, 5000)}
+                  />
+                </Box>
                 </SimpleGrid>
               </Stack>
             </GridItem>
