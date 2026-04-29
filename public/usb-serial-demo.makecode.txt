@@ -1,22 +1,26 @@
-function sendButton(button: string) {
-    serial.writeLine("{\"type\":\"button\",\"button\":\"" + button + "\",\"event\":\"click\"}")
+function sendButton(button: string, event: string, label: string) {
+    serial.writeLine('{"type":"button","button":"' + button + '","event":"' + event + '","label":"' + label + '"}')
 }
 
 function sendGesture(event: string) {
-    serial.writeLine("{\"type\":\"gesture\",\"event\":\"" + event + "\"}")
+    serial.writeLine('{"type":"gesture","event":"' + event + '"}')
 }
 
 input.onButtonPressed(Button.A, function () {
-    sendButton("A")
+    sendButton("A", "click", "Click")
 })
 
 input.onButtonPressed(Button.B, function () {
-    sendButton("B")
+    sendButton("B", "click", "Click")
 })
 
 input.onButtonPressed(Button.AB, function () {
-    sendButton("AB")
+    sendButton("AB", "click", "Click")
 })
+
+let aPressed = false
+let bPressed = false
+let abPressed = false
 
 input.onGesture(Gesture.Shake, function () {
     sendGesture("shake")
@@ -38,6 +42,18 @@ input.onGesture(Gesture.LogoDown, function () {
     sendGesture("faceDown")
 })
 
+input.onLogoEvent(TouchButtonEvent.Touched, function () {
+    sendButton("Logo", "down", "Pressed")
+})
+
+input.onLogoEvent(TouchButtonEvent.Released, function () {
+    sendButton("Logo", "up", "Released")
+})
+
+input.onLogoEvent(TouchButtonEvent.Pressed, function () {
+    sendButton("Logo", "click", "Click")
+})
+
 serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {
     let command = serial.readLine()
     if (command.indexOf("\"type\":\"show_text\"") >= 0) {
@@ -55,6 +71,32 @@ basic.showIcon(IconNames.Heart)
 serial.writeLine("{\"type\":\"button\",\"button\":\"AB\",\"event\":\"click\",\"label\":\"Serial ready\"}")
 
 basic.forever(function () {
+    const aNow = input.buttonIsPressed(Button.A)
+    const bNow = input.buttonIsPressed(Button.B)
+    const abNow = input.buttonIsPressed(Button.AB)
+
+    if (aNow && !aPressed) {
+        sendButton("A", "down", "Pressed")
+    } else if (!aNow && aPressed) {
+        sendButton("A", "up", "Released")
+    }
+
+    if (bNow && !bPressed) {
+        sendButton("B", "down", "Pressed")
+    } else if (!bNow && bPressed) {
+        sendButton("B", "up", "Released")
+    }
+
+    if (abNow && !abPressed) {
+        sendButton("AB", "down", "Pressed")
+    } else if (!abNow && abPressed) {
+        sendButton("AB", "up", "Released")
+    }
+
+    aPressed = aNow
+    bPressed = bNow
+    abPressed = abNow
+
     serial.writeLine("{\"type\":\"accelerometer\",\"x\":" + input.acceleration(Dimension.X) + ",\"y\":" + input.acceleration(Dimension.Y) + ",\"z\":" + input.acceleration(Dimension.Z) + "}")
     serial.writeLine("{\"type\":\"magnetometer\",\"x\":" + input.magneticForce(Dimension.X) + ",\"y\":" + input.magneticForce(Dimension.Y) + ",\"z\":" + input.magneticForce(Dimension.Z) + "}")
     serial.writeLine("{\"type\":\"temperature\",\"celsius\":" + input.temperature() + "}")

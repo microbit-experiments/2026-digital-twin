@@ -4,26 +4,8 @@ function emitSensors() {
     serial.writeLine('{"type":"temperature","celsius":' + input.temperature() + '}')
 }
 
-function sendButton(button: string) {
-    serial.writeLine('{"type":"button","button":"' + button + '","event":"click","label":"Pressed"}')
-}
-
-function sendButtonRelease(button: string) {
-    serial.writeLine('{"type":"button","button":"' + button + '","event":"up","label":"Released"}')
-}
-
-input.onButtonPressed(Button.A, function () {
-    sendButton("A")
-})
-input.onButtonPressed(Button.B, function () {
-    sendButton("B")
-})
-input.onButtonPressed(Button.AB, function () {
-    sendButton("AB")
-})
-
 input.onLogoEvent(TouchButtonEvent.Touched, function () {
-    serial.writeLine('{"type":"button","button":"Logo","event":"down","label":"Touched"}')
+    serial.writeLine('{"type":"button","button":"Logo","event":"down","label":"Pressed"}')
 })
 
 input.onLogoEvent(TouchButtonEvent.Released, function () {
@@ -31,13 +13,13 @@ input.onLogoEvent(TouchButtonEvent.Released, function () {
 })
 
 input.onLogoEvent(TouchButtonEvent.Pressed, function () {
-    serial.writeLine('{"type":"button","button":"Logo","event":"click","label":"Clicked"}')
+    serial.writeLine('{"type":"button","button":"Logo","event":"click","label":"Click"}')
 })
 
 serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {
     let command = serial.readLine()
     if (command.indexOf('"type":"show_text"') >= 0) {
-        basic.showString("Hi")
+        basic.showString("LOGO")
     } else if (command.indexOf('"type":"clear_display"') >= 0) {
         basic.clearScreen()
     } else if (command.indexOf('"type":"set_led"') >= 0) {

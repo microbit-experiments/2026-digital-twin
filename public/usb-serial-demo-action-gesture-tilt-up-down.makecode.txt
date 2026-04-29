@@ -1,0 +1,47 @@
+function emitSensors() {
+    serial.writeLine('{"type":"accelerometer","x":' + input.acceleration(Dimension.X) + ',"y":' + input.acceleration(Dimension.Y) + ',"z":' + input.acceleration(Dimension.Z) + '}')
+    serial.writeLine('{"type":"magnetometer","x":' + input.magneticForce(Dimension.X) + ',"y":' + input.magneticForce(Dimension.Y) + ',"z":' + input.magneticForce(Dimension.Z) + '}')
+    serial.writeLine('{"type":"temperature","celsius":' + input.temperature() + '}')
+}
+
+function sendGesture(event: string) {
+    serial.writeLine('{"type":"gesture","event":"' + event + '"}')
+}
+
+let pitchedUp = false
+let pitchedDown = false
+
+basic.forever(function () {
+    const pitch = input.rotation(Rotation.Pitch)
+    if (pitch > 70 && !pitchedUp) {
+        sendGesture("tiltUp")
+        pitchedUp = true
+    }
+    if (pitch < -70 && !pitchedDown) {
+        sendGesture("tiltDown")
+        pitchedDown = true
+    }
+
+    if (pitch < 50) {
+        pitchedUp = false
+    }
+    if (pitch > -50) {
+        pitchedDown = false
+    }
+
+    emitSensors()
+    basic.pause(250)
+})
+
+serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {
+    let command = serial.readLine()
+    if (command.indexOf('"type":"show_text"') >= 0) {
+        basic.showString("TD")
+    } else if (command.indexOf('"type":"clear_display"') >= 0) {
+        basic.clearScreen()
+    } else if (command.indexOf('"type":"set_led"') >= 0) {
+        led.plot(2, 2)
+    }
+})
+
+basic.showIcon(IconNames.Asleep)

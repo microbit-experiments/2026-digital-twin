@@ -1,0 +1,30 @@
+function emitSensors() {
+    serial.writeLine('{"type":"accelerometer","x":' + input.acceleration(Dimension.X) + ',"y":' + input.acceleration(Dimension.Y) + ',"z":' + input.acceleration(Dimension.Z) + '}')
+    serial.writeLine('{"type":"magnetometer","x":' + input.magneticForce(Dimension.X) + ',"y":' + input.magneticForce(Dimension.Y) + ',"z":' + input.magneticForce(Dimension.Z) + '}')
+    serial.writeLine('{"type":"temperature","celsius":' + input.temperature() + '}')
+}
+
+function sendGesture(event: string) {
+    serial.writeLine('{"type":"gesture","event":"' + event + '"}')
+}
+
+input.onGesture(Gesture.LogoUp, function () {
+    sendGesture("faceUp")
+})
+
+serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {
+    let command = serial.readLine()
+    if (command.indexOf('"type":"show_text"') >= 0) {
+        basic.showString("FU")
+    } else if (command.indexOf('"type":"clear_display"') >= 0) {
+        basic.clearScreen()
+    } else if (command.indexOf('"type":"set_led"') >= 0) {
+        led.plot(2, 2)
+    }
+})
+
+basic.showIcon(IconNames.Chessboard)
+basic.forever(function () {
+    emitSensors()
+    basic.pause(250)
+})

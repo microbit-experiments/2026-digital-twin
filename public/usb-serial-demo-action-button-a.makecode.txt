@@ -4,40 +4,20 @@ function emitSensors() {
     serial.writeLine('{"type":"temperature","celsius":' + input.temperature() + '}')
 }
 
-function sendButton(button: string) {
-    serial.writeLine('{"type":"button","button":"' + button + '","event":"click","label":"Pressed"}')
+function sendButton(button: string, event: string, label: string) {
+    serial.writeLine('{"type":"button","button":"' + button + '","event":"' + event + '","label":"' + label + '"}')
 }
 
-function sendButtonRelease(button: string) {
-    serial.writeLine('{"type":"button","button":"' + button + '","event":"up","label":"Released"}')
-}
+let wasPressed = false
 
 input.onButtonPressed(Button.A, function () {
-    sendButton("A")
-})
-input.onButtonPressed(Button.B, function () {
-    sendButton("B")
-})
-input.onButtonPressed(Button.AB, function () {
-    sendButton("AB")
-})
-
-input.onLogoEvent(TouchButtonEvent.Touched, function () {
-    serial.writeLine('{"type":"button","button":"Logo","event":"down","label":"Touched"}')
-})
-
-input.onLogoEvent(TouchButtonEvent.Released, function () {
-    serial.writeLine('{"type":"button","button":"Logo","event":"up","label":"Released"}')
-})
-
-input.onLogoEvent(TouchButtonEvent.Pressed, function () {
-    serial.writeLine('{"type":"button","button":"Logo","event":"click","label":"Clicked"}')
+    sendButton("A", "click", "Click")
 })
 
 serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {
     let command = serial.readLine()
     if (command.indexOf('"type":"show_text"') >= 0) {
-        basic.showString("Hi")
+        basic.showString("A")
     } else if (command.indexOf('"type":"clear_display"') >= 0) {
         basic.clearScreen()
     } else if (command.indexOf('"type":"set_led"') >= 0) {
@@ -47,6 +27,14 @@ serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {
 
 basic.showIcon(IconNames.Heart)
 basic.forever(function () {
+    const isPressed = input.buttonIsPressed(Button.A)
+    if (isPressed && !wasPressed) {
+        sendButton("A", "down", "Pressed")
+    } else if (!isPressed && wasPressed) {
+        sendButton("A", "up", "Released")
+    }
+    wasPressed = isPressed
+
     emitSensors()
     basic.pause(250)
 })
