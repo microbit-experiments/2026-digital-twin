@@ -164,11 +164,11 @@ export class BlueToothConnector extends BaseConnector {
     }
 
     private async ledLoop() {
-        const pollRate = 1;
+        const pollPeriod = 20;
         while (1) {
             await this.waitForConnect()
             this.updateLEDs()
-            await new Promise(resolve => setTimeout(resolve, pollRate));
+            await new Promise(resolve => setTimeout(resolve, pollPeriod));
         }
     }
 }
