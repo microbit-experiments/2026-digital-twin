@@ -6,6 +6,10 @@ function sendGesture(event: string) {
     serial.writeLine('{"type":"gesture","event":"' + event + '"}')
 }
 
+function sendMicrophone(event: string) {
+    serial.writeLine('{"type":"microphone","event":"' + event + '"}')
+}
+
 input.onButtonPressed(Button.A, function () {
     sendButton("A", "click", "Click")
 })
@@ -52,6 +56,14 @@ input.onLogoEvent(TouchButtonEvent.Released, function () {
 
 input.onLogoEvent(TouchButtonEvent.Pressed, function () {
     sendButton("Logo", "click", "Click")
+})
+
+input.onSound(DetectedSound.Loud, function () {
+    sendMicrophone("loud")
+})
+
+input.onSound(DetectedSound.Quiet, function () {
+    sendMicrophone("quiet")
 })
 
 serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {
