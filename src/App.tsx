@@ -59,7 +59,7 @@ function isActiveStart(behaviour: InputBehaviourKind) {
 }
 
 function isActiveEnd(behaviour: InputBehaviourKind) {
-  return behaviour === "up" || behaviour === "notPressed" || behaviour === "quiet";
+  return behaviour === "up" || behaviour === "notPressed" || behaviour === "off";
 }
 
 function isMicrophoneInput(input: InputBehaviour) {
@@ -255,7 +255,7 @@ function App() {
         idleTimeoutRef.current = null;
       }
 
-      if (isActiveStart(input.behaviour) || input.behaviour === "loud") {
+      if (isActiveStart(input.behaviour) || input.behaviour === "on") {
         activeInputsRef.current.add(input.button);
       }
 
@@ -274,7 +274,7 @@ function App() {
         idleTimeoutRef.current = window.setTimeout(() => {
           setLatestInputBehaviour(null);
           idleTimeoutRef.current = null;
-        }, input.behaviour === "loud" ? 1200 : 500);
+        }, input.behaviour === "on" ? 1200 : 500);
       } else if (activeInputsRef.current.size === 0) {
         idleTimeoutRef.current = window.setTimeout(() => {
           setLatestInputBehaviour(null);
