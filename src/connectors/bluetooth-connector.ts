@@ -1,8 +1,9 @@
 import { BaseConnector } from "./base-connector"
 import { type MicrobitBluetoothConnection, createBluetoothConnection } from "@microbit/microbit-connection/bluetooth";
-import type { AccelerometerData, ButtonActionData, MagnetometerData, GestureData, TemperatureData, ConnectionStatusChange, LedMatrix, MicrobitEventData } from "@microbit/microbit-connection";
-import { ButtonAction, GestureEvent, ConnectionStatus } from "@microbit/microbit-connection";
-import { EventSourceID, MicrophoneState } from "../types/event-data";
+import type { AccelerometerData, ButtonActionData, ButtonData, MagnetometerData, GestureData, TemperatureData, ConnectionStatusChange, LedMatrix, MicrobitEventData } from "@microbit/microbit-connection";
+import { ButtonAction, ButtonState, GestureEvent, ConnectionStatus } from "@microbit/microbit-connection";
+import type { InputBehaviourKind } from "../types/microbit-connector";
+import { EventSourceID, MicrophoneSoundEvent } from "../types/event-data";
 
 export class BlueToothConnector extends BaseConnector {
     private conn: MicrobitBluetoothConnection = createBluetoothConnection()
@@ -21,7 +22,10 @@ export class BlueToothConnector extends BaseConnector {
 
         this.conn.addEventListener("buttonaaction", this.buttonAListener.bind(this));
         this.conn.addEventListener("buttonbaction", this.buttonBListener.bind(this));
+        this.conn.addEventListener("buttonabaction", this.buttonABListener.bind(this));
         this.conn.addEventListener("logoaction", this.logoListener.bind(this));
+        this.conn.addEventListener("buttonachanged", this.buttonStateListener.bind(this));
+        this.conn.addEventListener("buttonbchanged", this.buttonStateListener.bind(this));
 
         this.conn.addEventListener("accelerometerdatachanged", this.accelerometerListener.bind(this));
         this.conn.addEventListener("magnetometerdatachanged", this.magnetometerListener.bind(this));
@@ -60,13 +64,13 @@ export class BlueToothConnector extends BaseConnector {
         ].join("\n"))
 
         // Subscribe to events
-        await this.conn.subscribeToEvent(EventSourceID.Microphone, MicrophoneState.On)
-        await this.conn.subscribeToEvent(EventSourceID.Microphone, MicrophoneState.Off)
+        await this.conn.subscribeToEvent(EventSourceID.Microphone, MicrophoneSoundEvent.Loud)
+        await this.conn.subscribeToEvent(EventSourceID.Microphone, MicrophoneSoundEvent.Quiet)
 
         // Resume all loops waiting for a connect
         this.connected = true;
-        while (1) {
-            let waiter = this.connWaiters.pop()
+        for (;;) {
+            const waiter = this.connWaiters.pop()
             if (waiter == null) break;
             waiter()
         }
@@ -106,9 +110,65 @@ export class BlueToothConnector extends BaseConnector {
         }
     }
 
-    private buttonAction(action: ButtonAction, upMethod?: () => void, downMethod?: () => void) {
-        if (!this.connected) { return; }
+    private buttonActionKind(action: ButtonAction): InputBehaviourKind {
         switch (action) {
+            case ButtonAction.Down:
+                return "down";
+            case ButtonAction.Up:
+                return "up";
+            case ButtonAction.Click:
+                return "click";
+            case ButtonAction.LongClick:
+                return "longClick";
+            case ButtonAction.Hold:
+                return "hold";
+            case ButtonAction.DoubleClick:
+                return "doubleClick";
+        }
+    }
+
+    private buttonActionLabel(action: ButtonAction): string {
+        switch (action) {
+            case ButtonAction.Down:
+                return "Pressed";
+            case ButtonAction.Up:
+                return "Released";
+            case ButtonAction.Click:
+                return "Click";
+            case ButtonAction.LongClick:
+                return "Long click";
+            case ButtonAction.Hold:
+                return "Hold";
+            case ButtonAction.DoubleClick:
+                return "Double click";
+        }
+    }
+
+    private buttonStateKind(state: ButtonState): InputBehaviourKind {
+        switch (state) {
+            case ButtonState.NotPressed:
+                return "notPressed";
+            case ButtonState.ShortPress:
+                return "shortPress";
+            case ButtonState.LongPress:
+                return "longPress";
+        }
+    }
+
+    private buttonStateLabel(state: ButtonState): string {
+        switch (state) {
+            case ButtonState.NotPressed:
+                return "Not pressed";
+            case ButtonState.ShortPress:
+                return "Short press";
+            case ButtonState.LongPress:
+                return "Long press";
+        }
+    }
+
+    private buttonAction(data: ButtonActionData, upMethod?: () => void, downMethod?: () => void) {
+        if (!this.connected) { return; }
+        switch (data.action) {
             case ButtonAction.Up:
                 upMethod?.();
                 break;
@@ -116,18 +176,41 @@ export class BlueToothConnector extends BaseConnector {
                 downMethod?.();
                 break;
         }
+
+        this.inputBehaviourUpdate?.({
+            button: data.button,
+            behaviour: this.buttonActionKind(data.action),
+            label: this.buttonActionLabel(data.action),
+            source: "action",
+            timestamp: Date.now()
+        });
     }
 
     private buttonAListener(data: ButtonActionData): void {
-        this.buttonAction(data.action, this.buttonAUp, this.buttonADown);
+        this.buttonAction(data, this.buttonAUp, this.buttonADown);
     }
 
     private buttonBListener(data: ButtonActionData): void {
-        this.buttonAction(data.action, this.buttonBUp, this.buttonBDown);
+        this.buttonAction(data, this.buttonBUp, this.buttonBDown);
+    }
+
+    private buttonABListener(data: ButtonActionData): void {
+        this.buttonAction(data);
     }
 
     private logoListener(data: ButtonActionData): void {
-        this.buttonAction(data.action, this.onLogoUp, this.onLogoDown);
+        this.buttonAction(data, this.onLogoUp, this.onLogoDown);
+    }
+
+    private buttonStateListener(data: ButtonData): void {
+        if (!this.connected) { return; }
+        this.inputBehaviourUpdate?.({
+            button: data.button,
+            behaviour: this.buttonStateKind(data.state),
+            label: this.buttonStateLabel(data.state),
+            source: "state",
+            timestamp: Date.now()
+        });
     }
 
     private accelerometerListener(data: AccelerometerData): void {
@@ -189,13 +272,27 @@ export class BlueToothConnector extends BaseConnector {
         }
     }
 
-    private microphoneEvent(data: MicrophoneState) {
+    private microphoneEvent(data: MicrophoneSoundEvent) {
         switch (data) {
-            case MicrophoneState.Off:
+            case MicrophoneSoundEvent.Quiet:
                 this.micLedUpdate?.(false);
+                this.inputBehaviourUpdate?.({
+                    button: "Microphone",
+                    behaviour: "quiet",
+                    label: "Quiet",
+                    source: "action",
+                    timestamp: Date.now()
+                });
                 break;
-            case MicrophoneState.On:
+            case MicrophoneSoundEvent.Loud:
                 this.micLedUpdate?.(true);
+                this.inputBehaviourUpdate?.({
+                    button: "Microphone",
+                    behaviour: "loud",
+                    label: "Loud",
+                    source: "action",
+                    timestamp: Date.now()
+                });
                 break;
         }
     }
@@ -204,7 +301,7 @@ export class BlueToothConnector extends BaseConnector {
         if (!this.connected) { return; }
         switch (data.source) {
             case EventSourceID.Microphone:
-                this.microphoneEvent(data.value as MicrophoneState);
+                this.microphoneEvent(data.value as MicrophoneSoundEvent);
                 break;
             default:
                 this.log(`Unrecognised Source: ${data.source}`)
@@ -225,7 +322,7 @@ export class BlueToothConnector extends BaseConnector {
     }
 
     private async ledLoop() {
-        while (1) {
+        for (;;) {
             await this.waitForConnect()
             this.updateLEDs()
             await new Promise(resolve => setTimeout(resolve, this.LEDPollPeriod));

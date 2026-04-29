@@ -1,4 +1,4 @@
-import { ArrowForwardIcon, CheckCircleIcon, InfoIcon } from "@chakra-ui/icons";
+import { ArrowForwardIcon, AtSignIcon, BellIcon, CheckCircleIcon, InfoIcon, InfoOutlineIcon, RepeatIcon, UpDownIcon } from "@chakra-ui/icons";
 import {
   Badge,
   Button,
@@ -29,7 +29,7 @@ import {
   HStack,
   SimpleGrid,
 } from "@chakra-ui/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import "./App.css";
 import MicrobitSVG from "./assets/microbit-drawing.svg?react";
 import MicrobitLogo from "./assets/microbit-logo.svg";
@@ -44,6 +44,53 @@ import {
   type InfoPanelMode,
 } from "./components/InfoPanels";
 import { SensorChart, type SensorPoint } from "./components/SensorChart";
+import type { InputBehaviour, InputBehaviourKind, InputButton } from "./types/microbit-connector";
+
+function formatInputButton(button: InputButton) {
+  if (button === "Logo") return "Logo";
+  if (button === "AB") return "Buttons A+B";
+  if (button === "Microphone") return "Microphone";
+  if (button === "Gesture") return "Gesture";
+  return `Button ${button}`;
+}
+
+function isActiveStart(behaviour: InputBehaviourKind) {
+  return behaviour === "down";
+}
+
+function isActiveEnd(behaviour: InputBehaviourKind) {
+  return behaviour === "up" || behaviour === "notPressed" || behaviour === "quiet";
+}
+
+function isMicrophoneInput(input: InputBehaviour) {
+  return input.button === "Microphone";
+}
+
+function createGestureInput(behaviour: InputBehaviourKind, label: string): InputBehaviour {
+  return {
+    button: "Gesture",
+    behaviour,
+    label,
+    source: "action",
+    timestamp: Date.now(),
+  };
+}
+
+function findMicrobitSvgPart(target: EventTarget | null): InfoPanelMode | null {
+  if (!(target instanceof Element)) return null;
+
+  if (target.closest("#ButtonA")) return "buttonA";
+  if (target.closest("#ButtonB")) return "buttonB";
+  if (target.closest("#Logo, #LogoBackground")) return "logo";
+  if (target.closest("#MicrophoneHole, #UnlitMicrophone, #LitMicrophone")) return "microphone";
+
+  return null;
+}
+
+function isDisplayableInput(input: InputBehaviour) {
+  if (isActiveEnd(input.behaviour)) return false;
+  return true;
+}
 
 function App() {
   const desktopSidebarWidth = "420px";
@@ -55,9 +102,12 @@ function App() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isMicrobitShaking, setIsMicrobitShaking] = useState(false);
   const [infoPanelMode, setInfoPanelMode] = useState<InfoPanelMode>("default");
+  const [latestInputBehaviour, setLatestInputBehaviour] = useState<InputBehaviour | null>(null);
   const [accelerometerData, setAccelerometerData] = useState<SensorPoint[]>([]);
   const [magnetometerData, setMagnetometerData] = useState<SensorPoint[]>([]);
   const shakeTimeoutRef = useRef<number | null>(null);
+  const idleTimeoutRef = useRef<number | null>(null);
+  const activeInputsRef = useRef(new Set<InputButton>());
   const infoDisclosure = useDisclosure();
   const isLargeScreen = useBreakpointValue({ base: false, lg: true });
   const svgWidth = useBreakpointValue({
@@ -88,10 +138,27 @@ function App() {
       if (shakeTimeoutRef.current !== null) {
         window.clearTimeout(shakeTimeoutRef.current);
       }
+      if (idleTimeoutRef.current !== null) {
+        window.clearTimeout(idleTimeoutRef.current);
+      }
     };
   }, []);
 
   useEffect(() => {
+    const showGestureInput = (behaviour: InputBehaviourKind, label: string) => {
+      const input = createGestureInput(behaviour, label);
+      setLatestInputBehaviour(input);
+
+      if (idleTimeoutRef.current !== null) {
+        window.clearTimeout(idleTimeoutRef.current);
+      }
+
+      idleTimeoutRef.current = window.setTimeout(() => {
+        setLatestInputBehaviour(null);
+        idleTimeoutRef.current = null;
+      }, 1200);
+    };
+
     // TODO Replace placeholder handlers
     mbConnector.setTemperatureUpdate((x) => {
       console.log("Temperature: ", x);
@@ -99,30 +166,37 @@ function App() {
 
     mbConnector.setOnTiltUp(() => {
       console.log("tiltUp");
+      showGestureInput("tiltUp", "Tilt up");
     });
 
     mbConnector.setOnTiltDown(() => {
       console.log("tiltDown");
+      showGestureInput("tiltDown", "Tilt down");
     });
 
     mbConnector.setOnTiltLeft(() => {
       console.log("tiltLeft");
+      showGestureInput("tiltLeft", "Tilt left");
     });
 
     mbConnector.setOnTiltRight(() => {
       console.log("tiltRight");
+      showGestureInput("tiltRight", "Tilt right");
     });
 
     mbConnector.setOnFaceUp(() => {
       console.log("faceUp");
+      showGestureInput("faceUp", "Face up");
     });
 
     mbConnector.setOnFaceDown(() => {
       console.log("faceDown");
+      showGestureInput("faceDown", "Face down");
     });
 
     mbConnector.setOnFreefall(() => {
       console.log("freefall");
+      showGestureInput("freefall", "Freefall");
     });
 
     mbConnector.setOnAcceleration3g(() => {
@@ -175,6 +249,47 @@ function App() {
     mbConnector.setOnButtonBUp(() => {
       microbitDrawing.buttonB = false;
     });
+    mbConnector.setOnInputBehaviour((input) => {
+      if (idleTimeoutRef.current !== null) {
+        window.clearTimeout(idleTimeoutRef.current);
+        idleTimeoutRef.current = null;
+      }
+
+      if (isActiveStart(input.behaviour) || input.behaviour === "loud") {
+        activeInputsRef.current.add(input.button);
+      }
+
+      if (isActiveEnd(input.behaviour)) {
+        activeInputsRef.current.delete(input.button);
+      }
+
+      const shouldDisplay = isDisplayableInput(input);
+      if (shouldDisplay || isMicrophoneInput(input)) {
+        setLatestInputBehaviour(input);
+      } else if (activeInputsRef.current.size === 0) {
+        setLatestInputBehaviour(null);
+      }
+
+      if (isMicrophoneInput(input)) {
+        idleTimeoutRef.current = window.setTimeout(() => {
+          setLatestInputBehaviour(null);
+          idleTimeoutRef.current = null;
+        }, input.behaviour === "loud" ? 1200 : 500);
+      } else if (activeInputsRef.current.size === 0) {
+        idleTimeoutRef.current = window.setTimeout(() => {
+          setLatestInputBehaviour(null);
+          idleTimeoutRef.current = null;
+        }, shouldDisplay ? 900 : 0);
+      }
+
+      console.log("Input behaviour: ", `${formatInputButton(input.button)} ${input.label}`);
+
+      if (shouldDisplay || isActiveStart(input.behaviour)) {
+        if (input.button === "A") setInfoPanelMode("buttonA");
+        if (input.button === "B") setInfoPanelMode("buttonB");
+        if (input.button === "Logo") setInfoPanelMode("logo");
+      }
+    });
     mbConnector.setOnLogoDown(() => {
       microbitDrawing.touchLogo = true;
       setInfoPanelMode("logo");
@@ -217,6 +332,20 @@ function App() {
   }, [mbConnector, microbitDrawing, triggerMicrobitShake]);
 
   const infoPanelBody = <InfoPanelContent mode={infoPanelMode} />;
+
+  const openInfoPanel = useCallback((nextMode: InfoPanelMode) => {
+    setInfoPanelMode(nextMode);
+    if (!isLargeScreen) {
+      infoDisclosure.onOpen();
+    }
+  }, [infoDisclosure, isLargeScreen]);
+
+  const handleMicrobitDrawingClick = useCallback((event: MouseEvent<HTMLDivElement>) => {
+    const nextMode = findMicrobitSvgPart(event.target);
+    if (!nextMode) return;
+
+    openInfoPanel(nextMode);
+  }, [openInfoPanel]);
 
   const handleConnect = useCallback(() => {
     if (isConnecting) return;
@@ -263,16 +392,24 @@ function App() {
 
   const isDesktopSidebarVisible = mode === "connected" && Boolean(isLargeScreen);
   const isMobileInfoDrawerOpen = mode === "connected" && !isLargeScreen && infoDisclosure.isOpen;
-  const currentGesture =
-    infoPanelMode === "shake"
-      ? "Shake"
+  const currentInputDisplay = latestInputBehaviour
+    ? {
+      component: formatInputButton(latestInputBehaviour.button),
+      event: latestInputBehaviour.label,
+      visualType: latestInputBehaviour.button,
+      isIdle: false,
+    }
+    : infoPanelMode === "shake"
+      ? { component: "Gesture", event: "Shake", visualType: "Gesture", isIdle: false }
       : infoPanelMode === "buttonA"
-        ? "Button A"
+        ? { component: "Button A", event: "Selected", visualType: "A", isIdle: false }
         : infoPanelMode === "buttonB"
-          ? "Button B"
+          ? { component: "Button B", event: "Selected", visualType: "B", isIdle: false }
           : infoPanelMode === "logo"
-            ? "Logo"
-            : "Idle";
+            ? { component: "Logo", event: "Selected", visualType: "Logo", isIdle: false }
+            : infoPanelMode === "microphone"
+              ? { component: "Microphone", event: "Selected", visualType: "Microphone", isIdle: false }
+              : { component: "Status", event: "Idle", visualType: null, isIdle: true };
 
   return (
     <Container maxW="100%" minH="100vh" px={0} bg="#f7f9fc">
@@ -423,8 +560,13 @@ function App() {
                     <Box
                       display="inline-block"
                       transformOrigin="center center"
+                      cursor="pointer"
+                      onClick={handleMicrobitDrawingClick}
                       animation={isMicrobitShaking ? "microbitShake 350ms ease-in-out" : undefined}
                       sx={{
+                        "& svg #ButtonA, & svg #ButtonB, & svg #Logo, & svg #LogoBackground, & svg #MicrophoneHole, & svg #UnlitMicrophone, & svg #LitMicrophone": {
+                          cursor: "pointer",
+                        },
                         "@keyframes microbitShake": {
                           "0%": { transform: "translateX(0px) rotate(0deg)" },
                           "20%": { transform: "translateX(-8px) rotate(-2deg)" },
@@ -441,36 +583,69 @@ function App() {
 
                   <HStack
                     spacing={4}
-                    bg={currentGesture === "Idle" ? "gray.50" : "blue.50"}
+                    bg={currentInputDisplay.isIdle ? "gray.50" : "blue.50"}
                     border="1px solid"
-                    borderColor={currentGesture === "Idle" ? "gray.200" : "blue.100"}
+                    borderColor={currentInputDisplay.isIdle ? "gray.200" : "blue.100"}
                     borderRadius="8px"
                     px={{ base: 4, md: 6 }}
                     py={{ base: 4, md: 5 }}
                     mt={4}
-                    maxW="520px"
+                    maxW="640px"
                     mx="auto"
                   >
                     <Center
                       w={{ base: "48px", md: "56px" }}
                       h={{ base: "48px", md: "56px" }}
                       borderRadius="8px"
-                      bg={currentGesture === "Idle" ? "white" : "blue.100"}
-                      color={currentGesture === "Idle" ? "gray.500" : "blue.700"}
+                      bg={currentInputDisplay.isIdle ? "white" : "blue.100"}
+                      color={currentInputDisplay.isIdle ? "gray.500" : "blue.700"}
                       fontSize="md"
                       fontWeight="bold"
                       flexShrink={0}
                     >
-                      IN
+                      {currentInputDisplay.visualType === "Microphone" ? (
+                        <BellIcon boxSize={6} />
+                      ) : currentInputDisplay.visualType === "Gesture" ? (
+                        <UpDownIcon boxSize={6} />
+                      ) : currentInputDisplay.visualType === "Logo" ? (
+                        <AtSignIcon boxSize={6} />
+                      ) : currentInputDisplay.visualType === "AB" ? (
+                        <RepeatIcon boxSize={6} />
+                      ) : !currentInputDisplay.isIdle ? (
+                        <CheckCircleIcon boxSize={6} />
+                      ) : (
+                        <InfoOutlineIcon boxSize={6} />
+                      )}
                     </Center>
-                    <Box minW={0}>
+                    <HStack
+                      flex={1}
+                      spacing={{ base: 3, md: 5 }}
+                      align="stretch"
+                      minW={0}
+                    >
+                      <Box minW={0} flex={1}>
+                        <Text color="gray.500" fontSize="sm">
+                          Component
+                        </Text>
+                        <Text color={currentInputDisplay.isIdle ? "gray.700" : "blue.800"} fontWeight="bold" fontSize={{ base: "xl", md: "2xl" }}>
+                          {currentInputDisplay.component}
+                        </Text>
+                      </Box>
+                      <Box
+                        w="1px"
+                        bg={currentInputDisplay.isIdle ? "gray.200" : "blue.200"}
+                        alignSelf="stretch"
+                        flexShrink={0}
+                      />
+                      <Box minW={0} flex={1}>
                       <Text color="gray.500" fontSize="sm">
-                        Current Active Input
+                          Event
                       </Text>
-                      <Text color={currentGesture === "Idle" ? "gray.700" : "blue.800"} fontWeight="bold" fontSize="2xl">
-                        {currentGesture}
+                        <Text color={currentInputDisplay.isIdle ? "gray.700" : "blue.800"} fontWeight="bold" fontSize={{ base: "xl", md: "2xl" }}>
+                          {currentInputDisplay.event}
                       </Text>
                     </Box>
+                    </HStack>
                   </HStack>
                 </Box>
 
