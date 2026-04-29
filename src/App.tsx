@@ -1,5 +1,6 @@
-import { ArrowForwardIcon, InfoIcon } from "@chakra-ui/icons";
+import { ArrowForwardIcon, CheckCircleIcon, InfoIcon } from "@chakra-ui/icons";
 import {
+  Badge,
   Button,
   Card,
   CardBody,
@@ -7,6 +8,8 @@ import {
   CardHeader,
   Center,
   Container,
+  Grid,
+  GridItem,
   Heading,
   Image,
   Stack,
@@ -23,21 +26,28 @@ import {
   DrawerOverlay,
   useDisclosure,
   useBreakpointValue,
+  HStack,
+  SimpleGrid,
 } from "@chakra-ui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import MicrobitSVG from "./assets/microbit-drawing.svg?react";
+import MicrobitLogo from "./assets/microbit-logo.svg";
 import ConnectGif from "./assets/connect-microbit.gif";
 import { MicrobitDrawing } from "./utils/microbitDrawing";
 import { BlueToothConnector } from "./connectors/bluetooth-connector";
 import { createUSBConnection } from "@microbit/microbit-connection/usb";
 import { createUniversalHexFlashDataSource } from "@microbit/microbit-connection/universal-hex";
-import { InfoPanelContent, type InfoPanelMode } from "./components/InfoPanels";
+import {
+  getInfoPanelTitle,
+  InfoPanelContent,
+  type InfoPanelMode,
+} from "./components/InfoPanels";
 import { SensorChart, type SensorPoint } from "./components/SensorChart";
 
 function App() {
-  const desktopSidebarWidth = "400px";
-  const navbarHeight = "72px";
+  const desktopSidebarWidth = "420px";
+  const navbarHeight = "88px";
   const toast = useToast();
   const microbitDrawing = useMemo(() => new MicrobitDrawing(), []);
   const mbConnector = useMemo(() => new BlueToothConnector(), []);
@@ -253,12 +263,22 @@ function App() {
 
   const isDesktopSidebarVisible = mode === "connected" && Boolean(isLargeScreen);
   const isMobileInfoDrawerOpen = mode === "connected" && !isLargeScreen && infoDisclosure.isOpen;
+  const currentGesture =
+    infoPanelMode === "shake"
+      ? "Shake"
+      : infoPanelMode === "buttonA"
+        ? "Button A"
+        : infoPanelMode === "buttonB"
+          ? "Button B"
+          : infoPanelMode === "logo"
+            ? "Logo"
+            : "Idle";
 
   return (
-    <Container maxW="100%" minH="100vh" px={0} bg="gray.50">
+    <Container maxW="100%" minH="100vh" px={0} bg="#f7f9fc">
       <Flex
         as="nav"
-        px={8}
+        px={{ base: 4, md: 8 }}
         h={navbarHeight}
         w="100%"
         maxW="100%"
@@ -268,14 +288,47 @@ function App() {
         align="center"
         position="sticky"
         top={0}
-        zIndex={10}
+        zIndex={20}
       >
-        <Heading size="md">Microbit: Digital Twin</Heading>
+        <HStack spacing={4}>
+          <Box
+            as="a"
+            href="https://microbit.org"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="micro:bit website"
+            display="flex"
+            alignItems="center"
+            flexShrink={0}
+          >
+            <Image src={MicrobitLogo} alt="micro:bit" h="44px" w="auto" />
+          </Box>
+          <Heading size={{ base: "sm", md: "md" }}>Digital Twin</Heading>
+          {mode === "connected" && (
+            <Badge
+              colorScheme="green"
+              px={4}
+              py={2}
+              borderRadius="md"
+              border="1px solid"
+              borderColor="green.100"
+              bg="green.50"
+              color="green.700"
+              display={{ base: "none", md: "inline-flex" }}
+              alignItems="center"
+              gap={2}
+            >
+              <CheckCircleIcon />
+              Connected
+            </Badge>
+          )}
+        </HStack>
         <Spacer />
         <Button
           rightIcon={<ArrowForwardIcon />}
           colorScheme="teal"
-          variant="ghost"
+          variant="solid"
+          boxShadow="sm"
           onClick={handleFlashDemo}
         >
           Flash Demo
@@ -347,68 +400,135 @@ function App() {
       ) : (
         <Container
           maxW="100%"
-          h={`calc(100vh - ${navbarHeight})`}
-          px={{ base: 4, md: 8, lg: 10 }}
-          pr={{ base: 4, md: 8, lg: `calc(${desktopSidebarWidth} + 40px)` }}
-          py={0}
+          px={{ base: 4, md: 6, xl: 8 }}
+          py={{ base: 4, md: 6 }}
         >
-          <Flex direction="column" minH={`calc(100vh - ${navbarHeight})`} gap={4}>
-            <Center flex={1} minH={0}>
-              <Box
-                display="inline-block"
-                transformOrigin="center center"
-                animation={isMicrobitShaking ? "microbitShake 350ms ease-in-out" : undefined}
-                sx={{
-                  "@keyframes microbitShake": {
-                    "0%": { transform: "translateX(0px) rotate(0deg)" },
-                    "20%": { transform: "translateX(-8px) rotate(-2deg)" },
-                    "40%": { transform: "translateX(8px) rotate(2deg)" },
-                    "60%": { transform: "translateX(-6px) rotate(-1.5deg)" },
-                    "80%": { transform: "translateX(6px) rotate(1.5deg)" },
-                    "100%": { transform: "translateX(0px) rotate(0deg)" },
-                  },
-                }}
-              >
-                <MicrobitSVG width={svgWidth ?? "320px"} />
-              </Box>
-            </Center>
-            <Box
-              position="sticky"
-              bottom={4}
-              bg="white"
-              border="1px solid"
-              borderColor="gray.200"
-              borderRadius="xl"
-              px={4}
-              py={3}
-              boxShadow="md"
-            >
-              <Stack spacing={5}>
-                <SensorChart data={accelerometerData} title="Accelerometer (x, y, z)" maxVal={2000} showLegend={false} />
-                <SensorChart data={magnetometerData} title="Magnetometer (x, y, z)" maxVal={50000}/>
-              </Stack>
-            </Box>
-          </Flex>
-        </Container>
-      )}
+          <Grid
+            templateColumns={{ base: "1fr", xl: `minmax(0, 1fr) ${desktopSidebarWidth}` }}
+            gap={6}
+            alignItems="start"
+          >
+            <GridItem minW={0}>
+              <Stack spacing={6}>
+                <Box
+                  bg="white"
+                  border="1px solid"
+                  borderColor="gray.200"
+                  borderRadius="8px"
+                  boxShadow="0 14px 32px rgba(15, 23, 42, 0.08)"
+                  px={{ base: 4, md: 6 }}
+                  py={{ base: 4, md: 5 }}
+                >
+                  <Center minH={{ base: "260px", lg: "360px" }}>
+                    <Box
+                      display="inline-block"
+                      transformOrigin="center center"
+                      animation={isMicrobitShaking ? "microbitShake 350ms ease-in-out" : undefined}
+                      sx={{
+                        "@keyframes microbitShake": {
+                          "0%": { transform: "translateX(0px) rotate(0deg)" },
+                          "20%": { transform: "translateX(-8px) rotate(-2deg)" },
+                          "40%": { transform: "translateX(8px) rotate(2deg)" },
+                          "60%": { transform: "translateX(-6px) rotate(-1.5deg)" },
+                          "80%": { transform: "translateX(6px) rotate(1.5deg)" },
+                          "100%": { transform: "translateX(0px) rotate(0deg)" },
+                        },
+                      }}
+                    >
+                      <MicrobitSVG width={svgWidth ?? "320px"} />
+                    </Box>
+                  </Center>
 
-      {isDesktopSidebarVisible && (
-        <Box
-          position="fixed"
-          right={0}
-          top={navbarHeight}
-          w={desktopSidebarWidth}
-          h={`calc(100vh - ${navbarHeight})`}
-          bg="white"
-          borderLeft="1px solid"
-          borderColor="gray.200"
-          boxShadow="lg"
-          px={0}
-          py={8}
-          zIndex={9}
-        >
-          {infoPanelBody}
-        </Box>
+                  <HStack
+                    spacing={4}
+                    bg={currentGesture === "Idle" ? "gray.50" : "blue.50"}
+                    border="1px solid"
+                    borderColor={currentGesture === "Idle" ? "gray.200" : "blue.100"}
+                    borderRadius="8px"
+                    px={{ base: 4, md: 6 }}
+                    py={{ base: 4, md: 5 }}
+                    mt={4}
+                    maxW="520px"
+                    mx="auto"
+                  >
+                    <Center
+                      w={{ base: "48px", md: "56px" }}
+                      h={{ base: "48px", md: "56px" }}
+                      borderRadius="8px"
+                      bg={currentGesture === "Idle" ? "white" : "blue.100"}
+                      color={currentGesture === "Idle" ? "gray.500" : "blue.700"}
+                      fontSize="md"
+                      fontWeight="bold"
+                      flexShrink={0}
+                    >
+                      IN
+                    </Center>
+                    <Box minW={0}>
+                      <Text color="gray.500" fontSize="sm">
+                        Current Active Input
+                      </Text>
+                      <Text color={currentGesture === "Idle" ? "gray.700" : "blue.800"} fontWeight="bold" fontSize="2xl">
+                        {currentGesture}
+                      </Text>
+                    </Box>
+                  </HStack>
+                </Box>
+
+                <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
+                  <Box
+                    bg="white"
+                    border="1px solid"
+                    borderColor="gray.200"
+                    borderRadius="8px"
+                    px={5}
+                    py={5}
+                    boxShadow="0 10px 24px rgba(15, 23, 42, 0.06)"
+                  >
+                    <SensorChart
+                      data={accelerometerData}
+                      title="Accelerometer"
+                      maxVal={2000}
+                      showLegend
+                    />
+                  </Box>
+                  <Box
+                    bg="white"
+                    border="1px solid"
+                    borderColor="gray.200"
+                    borderRadius="8px"
+                    px={5}
+                    py={5}
+                    boxShadow="0 10px 24px rgba(15, 23, 42, 0.06)"
+                  >
+                    <SensorChart
+                      data={magnetometerData}
+                      title="Magnetometer"
+                      maxVal={50000}
+                    />
+                  </Box>
+                </SimpleGrid>
+              </Stack>
+            </GridItem>
+
+            {isDesktopSidebarVisible && (
+              <GridItem minW={0}>
+                <Box
+                  position="sticky"
+                  top={`calc(${navbarHeight} + 24px)`}
+                  maxH={`calc(100dvh - ${navbarHeight} - 48px)`}
+                  bg="white"
+                  border="1px solid"
+                  borderColor="gray.200"
+                  borderRadius="8px"
+                  boxShadow="0 14px 32px rgba(15, 23, 42, 0.08)"
+                  overflowY="auto"
+                >
+                  {infoPanelBody}
+                </Box>
+              </GridItem>
+            )}
+          </Grid>
+        </Container>
       )}
 
       <Drawer
@@ -422,7 +542,7 @@ function App() {
       >
         <DrawerOverlay display={{ base: "block", lg: "none" }} />
         <DrawerContent w="90vw" maxW="90vw">
-          <DrawerHeader>Sidebar Info</DrawerHeader>
+          <DrawerHeader>{getInfoPanelTitle(infoPanelMode)}</DrawerHeader>
           <DrawerBody>
             <Flex direction="column" h="100%">
               {infoPanelBody}

@@ -23,9 +23,3 @@ body,
 body {
   min-width: 320px;
 }
-
-iframe {
-  height: inherit;
-  width: 100%;
-  flex: 1;
-}
