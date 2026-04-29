@@ -4,20 +4,214 @@ function emitSensors() {
     serial.writeLine('{"type":"temperature","celsius":' + input.temperature() + '}')
 }
 
-function sendButton(button: string, event: string, label: string) {
-    serial.writeLine('{"type":"button","button":"' + button + '","event":"' + event + '","label":"' + label + '"}')
+function sendButton(button: string, event: string, label: string, value?: number) {
+    if (value == null) {
+        serial.writeLine('{"type":"button","button":"' + button + '","event":"' + event + '","label":"' + label + '"}')
+    } else {
+        serial.writeLine('{"type":"button","button":"' + button + '","event":"' + event + '","label":"' + label + '","value":' + value + '}')
+    }
 }
 
-let wasPressed = false
+function sendGesture(event: string) {
+    serial.writeLine('{"type":"gesture","event":"' + event + '"}')
+}
+
+function sendMicrophone(event: string) {
+    serial.writeLine('{"type":"microphone","event":"' + event + '"}')
+}
+
+function runForMode(mode: string, callback: () => void) {
+    if (actionMode === mode) {
+        callback();
+    }
+}
+
+function actionButtonA() {
+    const rolled = Math.randomRange(0, 9)
+    basic.showNumber(rolled)
+    sendButton("A", "value", "Random", rolled)
+}
+
+function actionButtonB() {
+    basic.showNumber(Math.randomRange(20, 80))
+    sendButton("B", "value", "Random", Math.randomRange(20, 80))
+}
+
+function actionButtonAB() {
+    basic.showString("AB")
+    sendButton("AB", "value", "Counter", 10)
+}
+
+function actionLogo() {
+    basic.showString('LOGO')
+}
+
+function actionMicrophoneLoud() {
+    basic.showString('LOUD')
+}
+
+function actionMicrophoneQuiet() {
+    basic.showString('QUIET')
+}
+
+function actionGesture() {
+    basic.showString('G')
+}
+
+function actionShake() {
+    basic.showIcon(IconNames.SmallDiamond)
+}
+
+function actionTiltLeft() {
+    basic.showString('L')
+}
+
+function actionTiltRight() {
+    basic.showString('R')
+}
+
+function actionTiltUpDown() {
+    basic.showString('T')
+}
+
+function actionFaceUp() {
+    basic.showString('UP')
+}
+
+function actionFaceDown() {
+    basic.showString('DN')
+}
+
+function actionFreefall() {
+    basic.showString("FF")
+}
+
+function actionAccel2g() {
+    basic.showIcon(IconNames.SmallHeart)
+}
+
+function actionAccel3g() {
+    basic.showIcon(IconNames.Heart)
+}
+
+function actionAccel6g() {
+    basic.showIcon(IconNames.Yes)
+}
+
+function actionAccel8g() {
+    basic.showIcon(IconNames.No)
+}
+
+const actionMode = "button-ab"
+let wasPressedA = false
+let wasPressedB = false
+let wasPressedAB = false
+let in2gWindow = false
+let inTiltUpWindow = false
+let inTiltDownWindow = false
+
+input.onButtonPressed(Button.A, function () {
+    sendButton("A", "click", "Click")
+    runForMode("button-a", actionButtonA)
+    runForMode("default", actionButtonA)
+})
+
+input.onButtonPressed(Button.B, function () {
+    sendButton("B", "click", "Click")
+    runForMode("button-b", actionButtonB)
+    runForMode("default", actionButtonB)
+})
 
 input.onButtonPressed(Button.AB, function () {
     sendButton("AB", "click", "Click")
+    runForMode("button-ab", actionButtonAB)
+    runForMode("default", actionButtonAB)
+})
+
+input.onLogoEvent(TouchButtonEvent.Pressed, function () {
+    sendButton("Logo", "click", "Click")
+    runForMode("logo", actionLogo)
+    runForMode("default", actionLogo)
+})
+
+input.onLogoEvent(TouchButtonEvent.Touched, function () {
+    sendButton("Logo", "down", "Pressed")
+})
+
+input.onLogoEvent(TouchButtonEvent.Released, function () {
+    sendButton("Logo", "up", "Released")
+})
+
+input.onSound(DetectedSound.Loud, function () {
+    sendMicrophone("loud")
+    runForMode("microphone", actionMicrophoneLoud)
+    runForMode("default", actionMicrophoneLoud)
+})
+
+input.onSound(DetectedSound.Quiet, function () {
+    sendMicrophone("quiet")
+    runForMode("microphone", actionMicrophoneQuiet)
+    runForMode("default", actionMicrophoneQuiet)
+})
+
+input.onGesture(Gesture.Shake, function () {
+    sendGesture("shake")
+    runForMode("gesture-shake", actionShake)
+    runForMode("default", actionShake)
+})
+
+input.onGesture(Gesture.TiltLeft, function () {
+    sendGesture("tiltLeft")
+    runForMode("gesture-tilt-left", actionTiltLeft)
+    runForMode("default", actionTiltLeft)
+})
+
+input.onGesture(Gesture.TiltRight, function () {
+    sendGesture("tiltRight")
+    runForMode("gesture-tilt-right", actionTiltRight)
+    runForMode("default", actionTiltRight)
+})
+
+input.onGesture(Gesture.LogoUp, function () {
+    sendGesture("faceUp")
+    runForMode("gesture-face-up", actionFaceUp)
+    runForMode("default", actionFaceUp)
+})
+
+input.onGesture(Gesture.LogoDown, function () {
+    sendGesture("faceDown")
+    runForMode("gesture-face-down", actionFaceDown)
+    runForMode("default", actionFaceDown)
+})
+
+input.onGesture(Gesture.FreeFall, function () {
+    sendGesture("freefall")
+    runForMode("gesture-freefall", actionFreefall)
+    runForMode("default", actionFreefall)
+})
+
+input.onGesture(Gesture.ThreeG, function () {
+    sendGesture("acceleration3g")
+    runForMode("gesture-3g", actionAccel3g)
+    runForMode("default", actionAccel3g)
+})
+
+input.onGesture(Gesture.SixG, function () {
+    sendGesture("acceleration6g")
+    runForMode("gesture-6g", actionAccel6g)
+    runForMode("default", actionAccel6g)
+})
+
+input.onGesture(Gesture.EightG, function () {
+    sendGesture("acceleration8g")
+    runForMode("gesture-8g", actionAccel8g)
+    runForMode("default", actionAccel8g)
 })
 
 serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {
-    let command = serial.readLine()
+    const command = serial.readLine()
     if (command.indexOf('"type":"show_text"') >= 0) {
-        basic.showString("AB")
+        basic.showString('ok')
     } else if (command.indexOf('"type":"clear_display"') >= 0) {
         basic.clearScreen()
     } else if (command.indexOf('"type":"set_led"') >= 0) {
@@ -26,15 +220,59 @@ serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {
 })
 
 basic.showIcon(IconNames.Heart)
+
 basic.forever(function () {
-    const isPressed = input.buttonIsPressed(Button.AB)
-    if (isPressed && !wasPressed) {
+    const isPressedA = input.buttonIsPressed(Button.A)
+    if (isPressedA && !wasPressedA) {
+        sendButton("A", "down", "Pressed")
+    } else if (!isPressedA && wasPressedA) {
+        sendButton("A", "up", "Released")
+    }
+    wasPressedA = isPressedA
+
+    const isPressedB = input.buttonIsPressed(Button.B)
+    if (isPressedB && !wasPressedB) {
+        sendButton("B", "down", "Pressed")
+    } else if (!isPressedB && wasPressedB) {
+        sendButton("B", "up", "Released")
+    }
+    wasPressedB = isPressedB
+
+    const isPressedAB = input.buttonIsPressed(Button.AB)
+    if (isPressedAB && !wasPressedAB) {
         sendButton("AB", "down", "Pressed")
-    } else if (!isPressed && wasPressed) {
+    } else if (!isPressedAB && wasPressedAB) {
         sendButton("AB", "up", "Released")
     }
-    wasPressed = isPressed
+    wasPressedAB = isPressedAB
+
+    const x = input.acceleration(Dimension.X)
+    const y = input.acceleration(Dimension.Y)
+    const z = input.acceleration(Dimension.Z)
+    const magnitude = Math.max(Math.max(Math.abs(x), Math.abs(y)), Math.abs(z))
+    const nowStrong = magnitude >= 1800
+    if (nowStrong && !in2gWindow) {
+        sendGesture("acceleration2g")
+        runForMode("gesture-2g", actionAccel2g)
+        runForMode("default", actionAccel2g)
+    }
+    in2gWindow = nowStrong
+
+    const pitch = input.rotation(Rotation.Pitch)
+    if (pitch > 70 && !inTiltUpWindow) {
+        sendGesture("tiltUp")
+        runForMode("gesture-tilt-up-down", actionTiltUpDown)
+        runForMode("default", actionTiltUpDown)
+    }
+    if (pitch < -70 && !inTiltDownWindow) {
+        sendGesture("tiltDown")
+        runForMode("gesture-tilt-up-down", actionTiltUpDown)
+        runForMode("default", actionTiltUpDown)
+    }
+    inTiltUpWindow = pitch > 50
+    inTiltDownWindow = pitch < -50
 
     emitSensors()
+    runForMode("default", actionGesture)
     basic.pause(250)
 })

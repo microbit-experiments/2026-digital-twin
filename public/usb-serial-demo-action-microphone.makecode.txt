@@ -102,7 +102,7 @@ function actionAccel8g() {
     basic.showIcon(IconNames.No)
 }
 
-const actionMode = "gesture-8g"
+const actionMode = "microphone"
 let wasPressedA = false
 let wasPressedB = false
 let wasPressedAB = false

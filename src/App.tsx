@@ -39,6 +39,7 @@ import { UsbSerialConnector } from "./connectors/usb-serial-connector";
 import {
   getInfoPanelTitle,
   InfoPanelContent,
+  type DemoProgram,
   type InfoPanelMode,
 } from "./components/InfoPanels";
 import { SensorChart, type SensorPoint } from "./components/SensorChart";
@@ -106,6 +107,50 @@ function createGestureInput(behaviour: InputBehaviourKind, label: string): Input
   };
 }
 
+function getGestureModeFromBehaviour(behaviour: InputBehaviourKind): InfoPanelMode | null {
+  switch (behaviour) {
+    case "shake":
+      return "shake";
+    case "tiltLeft":
+      return "tiltLeft";
+    case "tiltRight":
+      return "tiltRight";
+    case "tiltUp":
+    case "tiltDown":
+      return "tiltUpDown";
+    case "faceUp":
+      return "faceUp";
+    case "faceDown":
+      return "faceDown";
+    case "freefall":
+      return "freefall";
+    case "acceleration2g":
+      return "accel2g";
+    case "acceleration3g":
+      return "accel3g";
+    case "acceleration6g":
+      return "accel6g";
+    case "acceleration8g":
+      return "accel8g";
+    default:
+      return null;
+  }
+}
+
+function getDemoProgramsForMode(
+  demos: DemoProgram[],
+  mode: InfoPanelMode,
+): DemoProgram[] {
+  const byMode = demos.filter((demo) =>
+    demo.supportedModes ? demo.supportedModes.includes(mode) : true,
+  );
+  if (byMode.length > 0) {
+    return byMode;
+  }
+
+  return demos.filter((demo) => demo.supportedModes == null || demo.supportedModes.includes("default"));
+}
+
 function findMicrobitSvgPart(target: EventTarget | null): InfoPanelMode | null {
   if (!(target instanceof Element)) return null;
 
@@ -121,6 +166,130 @@ function isDisplayableInput(input: InputBehaviour) {
   if (isActiveEnd(input.behaviour)) return false;
   return true;
 }
+
+const actionDemoPrograms: DemoProgram[] = [
+  {
+    id: "default",
+    title: "Default all-input demo",
+    description:
+      "Single program for buttons, logo, gestures, microphone, accelerometer, magnetometer, and temperature.",
+    hexPath: "/usb-serial-demo.hex",
+    supportedModes: ["default", "buttonA", "buttonB", "buttonAB", "logo", "microphone", "shake", "tiltLeft", "tiltRight", "tiltUpDown", "faceUp", "faceDown", "freefall", "accel2g", "accel3g", "accel6g", "accel8g"],
+  },
+  {
+    id: "button-a",
+    title: "Button A action demo",
+    description:
+      "Press A for a random 0–9 number on the display, while sending button events and sensor streams.",
+    hexPath: "/usb-serial-demo-action-button-a.hex",
+    supportedModes: ["buttonA"],
+  },
+  {
+    id: "button-b",
+    title: "Button B action demo",
+    description: "Emit down/up/click events for Button B plus all sensor samples.",
+    hexPath: "/usb-serial-demo-action-button-b.hex",
+    supportedModes: ["buttonB"],
+  },
+  {
+    id: "button-ab",
+    title: "Button A+B action demo",
+    description: "Emit down/up/click events for the combined A+B action plus sensors.",
+    hexPath: "/usb-serial-demo-action-button-ab.hex",
+    supportedModes: ["buttonAB"],
+  },
+  {
+    id: "logo",
+    title: "Logo action demo",
+    description: "Emit logo pressed/released/click events and keep streaming sensors.",
+    hexPath: "/usb-serial-demo-action-logo.hex",
+    supportedModes: ["logo"],
+  },
+  {
+    id: "microphone",
+    title: "Microphone action demo",
+    description: "Emit loud and quiet events from the built-in microphone plus all sensor samples.",
+    hexPath: "/usb-serial-demo-action-microphone.hex",
+    supportedModes: ["microphone"],
+  },
+  {
+    id: "gesture-shake",
+    title: "Shake gesture demo",
+    description: "Emit only shake gesture events while also sending sensor values.",
+    hexPath: "/usb-serial-demo-action-gesture-shake.hex",
+    supportedModes: ["shake"],
+  },
+  {
+    id: "gesture-tilt-left",
+    title: "Tilt left gesture demo",
+    description: "Emit tilt-left gesture events while streaming accelerometer/magnetometer/temperature.",
+    hexPath: "/usb-serial-demo-action-gesture-tilt-left.hex",
+    supportedModes: ["tiltLeft"],
+  },
+  {
+    id: "gesture-tilt-right",
+    title: "Tilt right gesture demo",
+    description: "Emit tilt-right gesture events while streaming accelerometer/magnetometer/temperature.",
+    hexPath: "/usb-serial-demo-action-gesture-tilt-right.hex",
+    supportedModes: ["tiltRight"],
+  },
+  {
+    id: "gesture-face-up",
+    title: "Face up gesture demo",
+    description: "Emit face-up gesture events while streaming sensor values.",
+    hexPath: "/usb-serial-demo-action-gesture-face-up.hex",
+    supportedModes: ["faceUp"],
+  },
+  {
+    id: "gesture-face-down",
+    title: "Face down gesture demo",
+    description: "Emit face-down gesture events while streaming sensor values.",
+    hexPath: "/usb-serial-demo-action-gesture-face-down.hex",
+    supportedModes: ["faceDown"],
+  },
+  {
+    id: "gesture-freefall",
+    title: "Freefall gesture demo",
+    description: "Emit freefall gesture events while streaming sensor values.",
+    hexPath: "/usb-serial-demo-action-gesture-freefall.hex",
+    supportedModes: ["freefall"],
+  },
+  {
+    id: "gesture-2g",
+    title: "2g acceleration demo",
+    description: "Emit acceleration2g events for threshold-based 2g-style movement triggers.",
+    hexPath: "/usb-serial-demo-action-gesture-2g.hex",
+    supportedModes: ["accel2g"],
+  },
+  {
+    id: "gesture-3g",
+    title: "3g acceleration demo",
+    description: "Emit acceleration3g events and continuous sensors.",
+    hexPath: "/usb-serial-demo-action-gesture-3g.hex",
+    supportedModes: ["accel3g"],
+  },
+  {
+    id: "gesture-6g",
+    title: "6g acceleration demo",
+    description: "Emit acceleration6g events and continuous sensors.",
+    hexPath: "/usb-serial-demo-action-gesture-6g.hex",
+    supportedModes: ["accel6g"],
+  },
+  {
+    id: "gesture-8g",
+    title: "8g acceleration demo",
+    description: "Emit acceleration8g events and continuous sensors.",
+    hexPath: "/usb-serial-demo-action-gesture-8g.hex",
+    supportedModes: ["accel8g"],
+  },
+  {
+    id: "gesture-tilt-up-down",
+    title: "Tilt up/down gesture demo",
+    description: "Emit tilt up and tilt down events using rotation thresholds.",
+    hexPath: "/usb-serial-demo-action-gesture-tilt-up-down.hex",
+    supportedModes: ["tiltUpDown"],
+  },
+];
 
 function getDynamicSensorMax(
   data: SensorPoint[],
@@ -158,6 +327,7 @@ function App() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isFlashing, setIsFlashing] = useState(false);
   const [isSendingCommand, setIsSendingCommand] = useState(false);
+  const [flashingDemoId, setFlashingDemoId] = useState<string | null>(null);
   const [isMicrobitShaking, setIsMicrobitShaking] = useState(false);
   const [infoPanelMode, setInfoPanelMode] = useState<InfoPanelMode>("default");
   const [latestInputBehaviour, setLatestInputBehaviour] = useState<InputBehaviour | null>(null);
@@ -217,60 +387,70 @@ function App() {
       }, 1200);
     };
 
-    // TODO Replace placeholder handlers
     mbConnector.setTemperatureUpdate((x) => {
       console.log("Temperature: ", x);
     });
 
     mbConnector.setOnTiltUp(() => {
       console.log("tiltUp");
+      setInfoPanelMode("tiltUpDown");
       showGestureInput("tiltUp", "Tilt up");
     });
 
     mbConnector.setOnTiltDown(() => {
       console.log("tiltDown");
+      setInfoPanelMode("tiltUpDown");
       showGestureInput("tiltDown", "Tilt down");
     });
 
     mbConnector.setOnTiltLeft(() => {
       console.log("tiltLeft");
+      setInfoPanelMode("tiltLeft");
       showGestureInput("tiltLeft", "Tilt left");
     });
 
     mbConnector.setOnTiltRight(() => {
       console.log("tiltRight");
+      setInfoPanelMode("tiltRight");
       showGestureInput("tiltRight", "Tilt right");
     });
 
     mbConnector.setOnFaceUp(() => {
       console.log("faceUp");
+      setInfoPanelMode("faceUp");
       showGestureInput("faceUp", "Face up");
     });
 
     mbConnector.setOnFaceDown(() => {
       console.log("faceDown");
+      setInfoPanelMode("faceDown");
       showGestureInput("faceDown", "Face down");
     });
 
     mbConnector.setOnFreefall(() => {
       console.log("freefall");
+      setInfoPanelMode("freefall");
       showGestureInput("freefall", "Freefall");
     });
 
     mbConnector.setOnAcceleration3g(() => {
       console.log("acceleration3g");
+      setInfoPanelMode("accel3g");
     });
 
     mbConnector.setOnAcceleration6g(() => {
       console.log("acceleration6g");
+      setInfoPanelMode("accel6g");
     });
 
     mbConnector.setOnAcceleration8g(() => {
       console.log("acceleration8g");
+      setInfoPanelMode("accel8g");
     });
 
     mbConnector.setOnAcceleration2g(() => {
       console.log("acceleration2g");
+      setInfoPanelMode("accel2g");
     });
 
     mbConnector.setOnNoAuthorizedDevice(() => {
@@ -344,8 +524,16 @@ function App() {
 
       if (shouldDisplay || isActiveStart(input.behaviour)) {
         if (input.button === "A") setInfoPanelMode("buttonA");
-        if (input.button === "B") setInfoPanelMode("buttonB");
-        if (input.button === "Logo") setInfoPanelMode("logo");
+        else if (input.button === "B") setInfoPanelMode("buttonB");
+        else if (input.button === "AB") setInfoPanelMode("buttonAB");
+        else if (input.button === "Logo") setInfoPanelMode("logo");
+        else if (input.button === "Microphone") setInfoPanelMode("microphone");
+        else if (input.button === "Gesture") {
+          const nextMode = getGestureModeFromBehaviour(input.behaviour);
+          if (nextMode) {
+            setInfoPanelMode(nextMode);
+          }
+        }
       }
     });
     mbConnector.setOnLogoDown(() => {
@@ -388,8 +576,6 @@ function App() {
       });
     });
   }, [mbConnector, microbitDrawing, triggerMicrobitShake]);
-
-  const infoPanelBody = <InfoPanelContent mode={infoPanelMode} />;
 
   const openInfoPanel = useCallback((nextMode: InfoPanelMode) => {
     setInfoPanelMode(nextMode);
@@ -439,22 +625,46 @@ function App() {
       .finally(() => setIsConnecting(false));
   }, [mbConnector, isConnecting, toast]);
 
-  const handleFlashDemo = () => {
+  const handleFlashDemoHex = useCallback((demo: DemoProgram) => {
     if (isFlashing) return;
 
+    setFlashingDemoId(demo.id);
     setIsFlashing(true);
-    const flashingPromise = mbConnector.flashDemoProgram();
+    const flashingPromise = mbConnector.flashHexFromUrl(demo.hexPath);
 
     toast.promise(flashingPromise, {
-      loading: { title: "Flashing demo program..." },
-      success: { title: "Demo program flashed. Listening on USB serial." },
-      error: { title: "Failed to flash demo program." }
+      loading: { title: `Flashing ${demo.title}...` },
+      success: { title: `${demo.title} flashed. Listening on USB serial.` },
+      error: { title: "Failed to flash demo program." },
     });
 
     flashingPromise
       .then(() => setMode("connected"))
-      .finally(() => setIsFlashing(false));
+      .finally(() => {
+        setIsFlashing(false);
+        setFlashingDemoId(null);
+      });
+  }, [mbConnector, isFlashing, toast]);
+
+  const demoProgramsForCurrentPanel = useMemo(
+    () => getDemoProgramsForMode(actionDemoPrograms, infoPanelMode),
+    [infoPanelMode],
+  );
+
+  const handleFlashDemo = () => {
+    const nextDemo = demoProgramsForCurrentPanel[0] ?? actionDemoPrograms[0];
+    handleFlashDemoHex(nextDemo);
   };
+
+  const infoPanelBody = (
+    <InfoPanelContent
+      mode={infoPanelMode}
+      demoPrograms={demoProgramsForCurrentPanel}
+      isFlashing={isFlashing}
+      flashingDemoId={flashingDemoId}
+      onFlashDemo={handleFlashDemoHex}
+    />
+  );
 
   const handleSendHello = () => {
     if (isSendingCommand) return;
@@ -480,17 +690,39 @@ function App() {
       visualType: latestInputBehaviour.button,
       isIdle: false,
     }
-    : infoPanelMode === "shake"
-      ? { component: "Gesture", event: "Shake", visualType: "Gesture", isIdle: false }
-      : infoPanelMode === "buttonA"
-        ? { component: "Button A", event: "Selected", visualType: "A", isIdle: false }
-        : infoPanelMode === "buttonB"
-          ? { component: "Button B", event: "Selected", visualType: "B", isIdle: false }
+    : infoPanelMode === "buttonA"
+      ? { component: "Button A", event: "Selected", visualType: "A", isIdle: false }
+      : infoPanelMode === "buttonB"
+        ? { component: "Button B", event: "Selected", visualType: "B", isIdle: false }
+        : infoPanelMode === "buttonAB"
+          ? { component: "Buttons A+B", event: "Selected", visualType: "AB", isIdle: false }
           : infoPanelMode === "logo"
             ? { component: "Logo", event: "Selected", visualType: "Logo", isIdle: false }
             : infoPanelMode === "microphone"
               ? { component: "Microphone", event: "Selected", visualType: "Microphone", isIdle: false }
-              : { component: "Status", event: "Idle", visualType: null, isIdle: true };
+              : infoPanelMode === "shake"
+                ? { component: "Gesture", event: "Shake", visualType: "Gesture", isIdle: false }
+                : infoPanelMode === "tiltLeft"
+                  ? { component: "Gesture", event: "Tilt left", visualType: "Gesture", isIdle: false }
+                  : infoPanelMode === "tiltRight"
+                    ? { component: "Gesture", event: "Tilt right", visualType: "Gesture", isIdle: false }
+                    : infoPanelMode === "tiltUpDown"
+                      ? { component: "Gesture", event: "Tilt up / down", visualType: "Gesture", isIdle: false }
+                      : infoPanelMode === "faceUp"
+                        ? { component: "Gesture", event: "Face up", visualType: "Gesture", isIdle: false }
+                        : infoPanelMode === "faceDown"
+                          ? { component: "Gesture", event: "Face down", visualType: "Gesture", isIdle: false }
+                          : infoPanelMode === "freefall"
+                            ? { component: "Gesture", event: "Freefall", visualType: "Gesture", isIdle: false }
+                            : infoPanelMode === "accel2g"
+                              ? { component: "Gesture", event: "2g acceleration", visualType: "Gesture", isIdle: false }
+                              : infoPanelMode === "accel3g"
+                                ? { component: "Gesture", event: "3g acceleration", visualType: "Gesture", isIdle: false }
+                                : infoPanelMode === "accel6g"
+                                  ? { component: "Gesture", event: "6g acceleration", visualType: "Gesture", isIdle: false }
+                                  : infoPanelMode === "accel8g"
+                                    ? { component: "Gesture", event: "8g acceleration", visualType: "Gesture", isIdle: false }
+                                    : { component: "Status", event: "Idle", visualType: null, isIdle: true };
 
   return (
     <Container maxW="100%" minH="100vh" px={0} bg="#f7f9fc">
