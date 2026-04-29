@@ -12,10 +12,11 @@ export type SensorPoint = {
 type SensorChartProps = {
   data: SensorPoint[];
   title: string;
+  maxVal: number;
   showLegend?: boolean;
 };
 
-export function SensorChart({ data, title, showLegend = true }: SensorChartProps) {
+export function SensorChart({ data, title, maxVal, showLegend = true }: SensorChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [chartWidth, setChartWidth] = useState(0);
@@ -37,7 +38,7 @@ export function SensorChart({ data, title, showLegend = true }: SensorChartProps
     if (!svgRef.current || chartWidth <= 0) return;
 
     const height = 160;
-    const margin = { top: 12, right: 18, bottom: 24, left: 42 };
+    const margin = { top: 12, right: 12, bottom: 12, left: 12 };
     const innerWidth = Math.max(chartWidth - margin.left - margin.right, 1);
     const innerHeight = Math.max(height - margin.top - margin.bottom, 1);
 
@@ -64,23 +65,24 @@ export function SensorChart({ data, title, showLegend = true }: SensorChartProps
       .domain([minTime, maxTime === minTime ? minTime + 1000 : maxTime])
       .range([margin.left, margin.left + innerWidth]);
 
-    const yScale = d3.scaleLinear().domain([-1.2, 1.2]).range([margin.top + innerHeight, margin.top]);
+    const yScale = d3.scaleLinear().domain([-maxVal, maxVal]).range([margin.top + innerHeight, margin.top]);
 
     const xAxis = d3.axisBottom(xScale).ticks(0).tickSize(0);
-    const yAxis = d3.axisLeft(yScale).ticks(5);
+    const yAxis = d3.axisLeft(yScale).ticks(0).tickSize(0);
 
     svg
       .append("g")
       .attr("transform", `translate(0, ${margin.top + innerHeight})`)
       .call(xAxis)
-      .call((g) => g.selectAll("path,line").attr("stroke", "#A0AEC0"));
+      .call((g) => g.selectAll("path,line").attr("stroke", "#CBD5E0"))
+      .call((g) => g.selectAll("text").remove());
 
     svg
       .append("g")
       .attr("transform", `translate(${margin.left}, 0)`)
       .call(yAxis)
-      .call((g) => g.selectAll("text").attr("fill", "#4A5568"))
-      .call((g) => g.selectAll("path,line").attr("stroke", "#A0AEC0"));
+      .call((g) => g.selectAll("path,line").attr("stroke", "#CBD5E0"))
+      .call((g) => g.selectAll("text").remove());
 
     const line = (key: "x" | "y" | "z") =>
       d3
@@ -107,6 +109,16 @@ export function SensorChart({ data, title, showLegend = true }: SensorChartProps
 
     const plotGroup = svg.append("g").attr("clip-path", `url(#${clipId})`);
 
+    const zeroLine = yScale(0);
+    svg
+      .append("line")
+      .attr("x1", margin.left)
+      .attr("x2", margin.left + innerWidth)
+      .attr("y1", zeroLine)
+      .attr("y2", zeroLine)
+      .attr("stroke", "#E2E8F0")
+      .attr("stroke-dasharray", "4 4");
+
     for (const item of series) {
       plotGroup
         .append("path")
@@ -118,28 +130,43 @@ export function SensorChart({ data, title, showLegend = true }: SensorChartProps
     }
   }, [chartWidth, clipId, data]);
 
+  const legendItems = [
+    { label: "X", color: "#E53E3E" },
+    { label: "Y", color: "#3182CE" },
+    { label: "Z", color: "#38A169" },
+  ];
+
   return (
     <Box ref={containerRef} w="100%">
-      <Heading size="sm" mb={2} color="gray.700">
-        {title}
-      </Heading>
+      <Flex justify="space-between" align="center" gap={3} mb={3} flexWrap="wrap">
+        <Heading size="sm" color="gray.700">
+          {title}
+        </Heading>
+        {showLegend && (
+          <Flex gap={2} align="center" flexWrap="wrap">
+            {legendItems.map((item) => (
+              <Flex
+                key={item.label}
+                align="center"
+                gap={2}
+                bg="gray.50"
+                border="1px solid"
+                borderColor="gray.200"
+                borderRadius="full"
+                px={3}
+                py={1}
+                minW="48px"
+              >
+                <Box w="16px" h="3px" bg={item.color} borderRadius="full" />
+                <Text color="gray.600" fontSize="xs" fontWeight="semibold">
+                  {item.label}
+                </Text>
+              </Flex>
+            ))}
+          </Flex>
+        )}
+      </Flex>
       <svg ref={svgRef} role="img" aria-label={`${title} graph for x y and z values over time`} />
-      {showLegend && (
-        <Flex gap={4} mt={2} justify="center" fontSize="sm" color="gray.600">
-          <Text>
-            <Box as="span" display="inline-block" w="10px" h="10px" bg="#E53E3E" borderRadius="full" mr={2} />
-            x
-          </Text>
-          <Text>
-            <Box as="span" display="inline-block" w="10px" h="10px" bg="#3182CE" borderRadius="full" mr={2} />
-            y
-          </Text>
-          <Text>
-            <Box as="span" display="inline-block" w="10px" h="10px" bg="#38A169" borderRadius="full" mr={2} />
-            z
-          </Text>
-        </Flex>
-      )}
     </Box>
   );
 }
