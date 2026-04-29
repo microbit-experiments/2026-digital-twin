@@ -3,7 +3,7 @@ import { type MicrobitBluetoothConnection, createBluetoothConnection } from "@mi
 import type { AccelerometerData, ButtonActionData, MagnetometerData, GestureData, TemperatureData, ConnectionStatusChange, LedMatrix, MicrobitEventData } from "@microbit/microbit-connection";
 import { ButtonAction, GestureEvent, ConnectionStatus } from "@microbit/microbit-connection";
 import type { InputBehaviourKind } from "../types/microbit-connector";
-import { EventSourceID, MicrophoneSoundEvent } from "../types/event-data";
+import { EventSourceID, MicrophoneLEDState } from "../types/event-data";
 
 export class BlueToothConnector extends BaseConnector {
     private conn: MicrobitBluetoothConnection = createBluetoothConnection()
@@ -62,8 +62,8 @@ export class BlueToothConnector extends BaseConnector {
         ].join("\n"))
 
         // Subscribe to events
-        await this.conn.subscribeToEvent(EventSourceID.Microphone, MicrophoneSoundEvent.Loud)
-        await this.conn.subscribeToEvent(EventSourceID.Microphone, MicrophoneSoundEvent.Quiet)
+        await this.conn.subscribeToEvent(EventSourceID.MicrophoneLED, MicrophoneLEDState.On)
+        await this.conn.subscribeToEvent(EventSourceID.MicrophoneLED, MicrophoneLEDState.Off)
 
         // Resume all loops waiting for a connect
         this.connected = true;
@@ -237,9 +237,9 @@ export class BlueToothConnector extends BaseConnector {
         }
     }
 
-    private microphoneEvent(data: MicrophoneSoundEvent) {
+    private microphoneEvent(data: MicrophoneLEDState) {
         switch (data) {
-            case MicrophoneSoundEvent.Quiet:
+            case MicrophoneLEDState.Off:
                 this.micLedUpdate?.(false);
                 this.inputBehaviourUpdate?.({
                     button: "Microphone",
@@ -249,7 +249,7 @@ export class BlueToothConnector extends BaseConnector {
                     timestamp: Date.now()
                 });
                 break;
-            case MicrophoneSoundEvent.Loud:
+            case MicrophoneLEDState.On:
                 this.micLedUpdate?.(true);
                 this.inputBehaviourUpdate?.({
                     button: "Microphone",
@@ -265,8 +265,8 @@ export class BlueToothConnector extends BaseConnector {
     private eventListener(data: MicrobitEventData) {
         if (!this.connected) { return; }
         switch (data.source) {
-            case EventSourceID.Microphone:
-                this.microphoneEvent(data.value as MicrophoneSoundEvent);
+            case EventSourceID.MicrophoneLED:
+                this.microphoneEvent(data.value as MicrophoneLEDState);
                 break;
             default:
                 this.log(`Unrecognised Source: ${data.source}`)
