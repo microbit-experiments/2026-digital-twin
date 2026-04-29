@@ -1,4 +1,4 @@
-import { MicrobitConnector } from "../types/microbit-connector"
+import { MicrobitConnector, type InputBehaviour } from "../types/microbit-connector"
 
 export abstract class BaseConnector extends MicrobitConnector {
     protected onNoAuthorizedDevice?: () => void;
@@ -12,6 +12,8 @@ export abstract class BaseConnector extends MicrobitConnector {
 
     protected buttonBDown?: () => void;
     protected buttonBUp?: () => void;
+
+    protected inputBehaviourUpdate?: (input: InputBehaviour) => void;
 
     protected ledMatrixUpdate?: (row: number, col: number, val: boolean) => void;
 
@@ -39,7 +41,7 @@ export abstract class BaseConnector extends MicrobitConnector {
     protected onShake?: () => void;
     protected onAcceleration2g?: () => void;
 
-    protected log(text: any) {
+    protected log(text: unknown) {
         console.log(`[${this.constructor.name}] ${text}`)
     }
 
@@ -78,6 +80,10 @@ export abstract class BaseConnector extends MicrobitConnector {
 
     public setOnButtonBUp(callback: () => void): void {
         this.buttonBUp = callback;
+    }
+
+    public setOnInputBehaviour(callback: (input: InputBehaviour) => void): void {
+        this.inputBehaviourUpdate = callback;
     }
 
     public setLedMatrixUpdate(callback: (row: number, col: number, val: boolean) => void): void {

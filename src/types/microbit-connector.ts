@@ -1,3 +1,24 @@
+export type InputButton = "A" | "B" | "AB" | "Logo";
+
+export type InputBehaviourKind =
+    | "down"
+    | "up"
+    | "click"
+    | "longClick"
+    | "hold"
+    | "doubleClick"
+    | "notPressed"
+    | "shortPress"
+    | "longPress";
+
+export type InputBehaviour = {
+    button: InputButton;
+    behaviour: InputBehaviourKind;
+    label: string;
+    source: "action" | "state";
+    timestamp: number;
+};
+
 export abstract class MicrobitConnector {
     abstract handleConnect(): Promise<void>;
 
@@ -17,6 +38,8 @@ export abstract class MicrobitConnector {
 
     abstract setOnButtonBDown(callback: () => void): void;
     abstract setOnButtonBUp(callback: () => void): void;
+
+    abstract setOnInputBehaviour(callback: (input: InputBehaviour) => void): void;
 
     abstract setLedMatrixUpdate(callback: (row: number, col: number, val: boolean) => void): void;
 

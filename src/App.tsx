@@ -44,6 +44,19 @@ import {
   type InfoPanelMode,
 } from "./components/InfoPanels";
 import { SensorChart, type SensorPoint } from "./components/SensorChart";
+import type { InputBehaviour, InputButton } from "./types/microbit-connector";
+
+function formatInputButton(button: InputButton) {
+  if (button === "Logo") return "Logo";
+  if (button === "AB") return "Buttons A+B";
+  return `Button ${button}`;
+}
+
+function getInputInitials(input: InputBehaviour | null) {
+  if (!input) return "IN";
+  if (input.button === "Logo") return "LG";
+  return input.button;
+}
 
 function App() {
   const desktopSidebarWidth = "420px";
@@ -55,6 +68,8 @@ function App() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isMicrobitShaking, setIsMicrobitShaking] = useState(false);
   const [infoPanelMode, setInfoPanelMode] = useState<InfoPanelMode>("default");
+  const [latestInputBehaviour, setLatestInputBehaviour] = useState<InputBehaviour | null>(null);
+  const [inputBehaviourLog, setInputBehaviourLog] = useState<InputBehaviour[]>([]);
   const [accelerometerData, setAccelerometerData] = useState<SensorPoint[]>([]);
   const [magnetometerData, setMagnetometerData] = useState<SensorPoint[]>([]);
   const shakeTimeoutRef = useRef<number | null>(null);
@@ -175,6 +190,15 @@ function App() {
     mbConnector.setOnButtonBUp(() => {
       microbitDrawing.buttonB = false;
     });
+    mbConnector.setOnInputBehaviour((input) => {
+      setLatestInputBehaviour(input);
+      setInputBehaviourLog((previous) => [input, ...previous].slice(0, 6));
+      console.log("Input behaviour: ", `${formatInputButton(input.button)} ${input.label}`);
+
+      if (input.button === "A") setInfoPanelMode("buttonA");
+      if (input.button === "B") setInfoPanelMode("buttonB");
+      if (input.button === "Logo") setInfoPanelMode("logo");
+    });
     mbConnector.setOnLogoDown(() => {
       microbitDrawing.touchLogo = true;
       setInfoPanelMode("logo");
@@ -264,7 +288,9 @@ function App() {
   const isDesktopSidebarVisible = mode === "connected" && Boolean(isLargeScreen);
   const isMobileInfoDrawerOpen = mode === "connected" && !isLargeScreen && infoDisclosure.isOpen;
   const currentGesture =
-    infoPanelMode === "shake"
+    latestInputBehaviour
+      ? `${formatInputButton(latestInputBehaviour.button)} ${latestInputBehaviour.label}`
+      : infoPanelMode === "shake"
       ? "Shake"
       : infoPanelMode === "buttonA"
         ? "Button A"
@@ -461,17 +487,47 @@ function App() {
                       fontWeight="bold"
                       flexShrink={0}
                     >
-                      IN
+                      {getInputInitials(latestInputBehaviour)}
                     </Center>
                     <Box minW={0}>
                       <Text color="gray.500" fontSize="sm">
-                        Current Active Input
+                        Latest Input Behaviour
                       </Text>
                       <Text color={currentGesture === "Idle" ? "gray.700" : "blue.800"} fontWeight="bold" fontSize="2xl">
                         {currentGesture}
                       </Text>
+                      {latestInputBehaviour && (
+                        <Text color="gray.500" fontSize="sm">
+                          Source: {latestInputBehaviour.source}
+                        </Text>
+                      )}
                     </Box>
                   </HStack>
+
+                  {inputBehaviourLog.length > 0 && (
+                    <Stack
+                      direction="row"
+                      spacing={2}
+                      flexWrap="wrap"
+                      justify="center"
+                      mt={3}
+                      maxW="640px"
+                      mx="auto"
+                    >
+                      {inputBehaviourLog.map((input, index) => (
+                        <Badge
+                          key={`${input.timestamp}-${index}`}
+                          colorScheme={input.source === "action" ? "blue" : "purple"}
+                          variant="subtle"
+                          borderRadius="md"
+                          px={3}
+                          py={1}
+                        >
+                          {formatInputButton(input.button)}: {input.label}
+                        </Badge>
+                      ))}
+                    </Stack>
+                  )}
                 </Box>
 
                 <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
