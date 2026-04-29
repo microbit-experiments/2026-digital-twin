@@ -44,7 +44,7 @@ import {
   type InfoPanelMode,
 } from "./components/InfoPanels";
 import { SensorChart, type SensorPoint } from "./components/SensorChart";
-import type { InputBehaviour, InputButton } from "./types/microbit-connector";
+import type { InputBehaviour, InputBehaviourKind, InputButton } from "./types/microbit-connector";
 
 function formatInputButton(button: InputButton) {
   if (button === "Logo") return "Logo";
@@ -56,6 +56,24 @@ function getInputInitials(input: InputBehaviour | null) {
   if (!input) return "IN";
   if (input.button === "Logo") return "LG";
   return input.button;
+}
+
+function isActiveStart(behaviour: InputBehaviourKind) {
+  return behaviour === "down";
+}
+
+function isActiveEnd(behaviour: InputBehaviourKind) {
+  return behaviour === "up" || behaviour === "notPressed";
+}
+
+function isDisplayableInput(input: InputBehaviour) {
+  if (isActiveEnd(input.behaviour)) return false;
+
+  if (input.button === "Logo") {
+    return !["down", "hold", "longClick"].includes(input.behaviour);
+  }
+
+  return true;
 }
 
 function App() {
@@ -73,6 +91,7 @@ function App() {
   const [accelerometerData, setAccelerometerData] = useState<SensorPoint[]>([]);
   const [magnetometerData, setMagnetometerData] = useState<SensorPoint[]>([]);
   const shakeTimeoutRef = useRef<number | null>(null);
+  const activeInputsRef = useRef(new Set<InputButton>());
   const infoDisclosure = useDisclosure();
   const isLargeScreen = useBreakpointValue({ base: false, lg: true });
   const svgWidth = useBreakpointValue({
@@ -191,13 +210,29 @@ function App() {
       microbitDrawing.buttonB = false;
     });
     mbConnector.setOnInputBehaviour((input) => {
-      setLatestInputBehaviour(input);
-      setInputBehaviourLog((previous) => [input, ...previous].slice(0, 6));
+      if (isActiveStart(input.behaviour)) {
+        activeInputsRef.current.add(input.button);
+      }
+
+      if (isActiveEnd(input.behaviour)) {
+        activeInputsRef.current.delete(input.button);
+      }
+
+      const shouldDisplay = isDisplayableInput(input);
+      if (shouldDisplay) {
+        setLatestInputBehaviour(input);
+        setInputBehaviourLog((previous) => [input, ...previous].slice(0, 6));
+      } else if (activeInputsRef.current.size === 0) {
+        setLatestInputBehaviour(null);
+      }
+
       console.log("Input behaviour: ", `${formatInputButton(input.button)} ${input.label}`);
 
-      if (input.button === "A") setInfoPanelMode("buttonA");
-      if (input.button === "B") setInfoPanelMode("buttonB");
-      if (input.button === "Logo") setInfoPanelMode("logo");
+      if (shouldDisplay || isActiveStart(input.behaviour)) {
+        if (input.button === "A") setInfoPanelMode("buttonA");
+        if (input.button === "B") setInfoPanelMode("buttonB");
+        if (input.button === "Logo") setInfoPanelMode("logo");
+      }
     });
     mbConnector.setOnLogoDown(() => {
       microbitDrawing.touchLogo = true;
