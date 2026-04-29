@@ -1,0 +1,44 @@
+function emitSensors() {
+    serial.writeLine('{"type":"accelerometer","x":' + input.acceleration(Dimension.X) + ',"y":' + input.acceleration(Dimension.Y) + ',"z":' + input.acceleration(Dimension.Z) + '}')
+    serial.writeLine('{"type":"magnetometer","x":' + input.magneticForce(Dimension.X) + ',"y":' + input.magneticForce(Dimension.Y) + ',"z":' + input.magneticForce(Dimension.Z) + '}')
+    serial.writeLine('{"type":"temperature","celsius":' + input.temperature() + '}')
+}
+
+function sendButton(button: string) {
+    serial.writeLine('{"type":"button","button":"' + button + '","event":"click","label":"Pressed"}')
+}
+
+function sendButtonRelease(button: string) {
+    serial.writeLine('{"type":"button","button":"' + button + '","event":"up","label":"Released"}')
+}
+
+input.onButtonPressed(Button.A, function () {
+    sendButton("A")
+})
+input.onButtonPressed(Button.B, function () {
+    sendButton("B")
+})
+input.onButtonPressed(Button.AB, function () {
+    sendButton("AB")
+})
+
+input.onLogoEvent(TouchButtonEvent.Touched, function () {
+    serial.writeLine('{"type":"button","button":"Logo","event":"down","label":"Touched"}')
+})
+
+serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {
+    let command = serial.readLine()
+    if (command.indexOf('"type":"show_text"') >= 0) {
+        basic.showString("Hi")
+    } else if (command.indexOf('"type":"clear_display"') >= 0) {
+        basic.clearScreen()
+    } else if (command.indexOf('"type":"set_led"') >= 0) {
+        led.plot(2, 2)
+    }
+})
+
+basic.showIcon(IconNames.Heart)
+basic.forever(function () {
+    emitSensors()
+    basic.pause(250)
+})
