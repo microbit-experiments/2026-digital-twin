@@ -243,8 +243,8 @@ export class BlueToothConnector extends BaseConnector {
                 this.micLedUpdate?.(false);
                 this.inputBehaviourUpdate?.({
                     button: "Microphone",
-                    behaviour: "quiet",
-                    label: "Quiet",
+                    behaviour: "off",
+                    label: "Off",
                     source: "action",
                     timestamp: Date.now()
                 });
@@ -253,8 +253,8 @@ export class BlueToothConnector extends BaseConnector {
                 this.micLedUpdate?.(true);
                 this.inputBehaviourUpdate?.({
                     button: "Microphone",
-                    behaviour: "loud",
-                    label: "Loud",
+                    behaviour: "on",
+                    label: "On",
                     source: "action",
                     timestamp: Date.now()
                 });
