@@ -1,4 +1,4 @@
-export type InputButton = "A" | "B" | "AB" | "Logo";
+export type InputButton = "A" | "B" | "AB" | "Logo" | "Microphone" | "Gesture";
 
 export type InputBehaviourKind =
     | "down"
@@ -9,7 +9,16 @@ export type InputBehaviourKind =
     | "doubleClick"
     | "notPressed"
     | "shortPress"
-    | "longPress";
+    | "longPress"
+    | "loud"
+    | "quiet"
+    | "tiltUp"
+    | "tiltDown"
+    | "tiltLeft"
+    | "tiltRight"
+    | "faceUp"
+    | "faceDown"
+    | "freefall";
 
 export type InputBehaviour = {
     button: InputButton;

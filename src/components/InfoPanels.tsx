@@ -1,11 +1,10 @@
 import { ExternalLinkIcon } from "@chakra-ui/icons";
-import { Badge, Box, Button, Divider, Heading, Stack, Text } from "@chakra-ui/react";
+import { Box, Button, Divider, Heading, Stack, Text } from "@chakra-ui/react";
 
-export type InfoPanelMode = "default" | "buttonA" | "buttonB" | "logo" | "shake";
+export type InfoPanelMode = "default" | "buttonA" | "buttonB" | "logo" | "microphone" | "shake";
 
 type InfoPanelData = {
   title: string;
-  label: string;
   description: string;
   docsUrl?: string;
   embedUrl?: string;
@@ -14,14 +13,12 @@ type InfoPanelData = {
 const infoPanels: Record<InfoPanelMode, InfoPanelData> = {
   default: {
     title: "Digital Twin",
-    label: "Demo program information",
     description:
       "Connect the micro:bit and interact with it to see live button, logo, gesture, LED, and sensor updates.",
     docsUrl: "https://makecode.microbit.org/reference/input",
   },
   buttonA: {
     title: "Button A Pressed",
-    label: "Button A down event detected",
     description:
       "Button A was pressed on the connected micro:bit. The reference below shows the MakeCode block, JavaScript, Python, examples, and simulator context.",
     docsUrl: "https://makecode.microbit.org/reference/input/on-button-pressed",
@@ -29,7 +26,6 @@ const infoPanels: Record<InfoPanelMode, InfoPanelData> = {
   },
   buttonB: {
     title: "Button B Pressed",
-    label: "Button B down event detected",
     description:
       "Button B was pressed on the connected micro:bit. The reference below uses the same MakeCode input event with Button B selected.",
     docsUrl: "https://makecode.microbit.org/reference/input/on-button-pressed",
@@ -37,15 +33,20 @@ const infoPanels: Record<InfoPanelMode, InfoPanelData> = {
   },
   logo: {
     title: "Logo Pressed",
-    label: "Logo touch event detected",
     description:
       "The micro:bit logo touch input was pressed. The reference below includes the block options, examples, and V2 hardware notes.",
     docsUrl: "https://makecode.microbit.org/reference/input/on-logo-event",
     embedUrl: "https://makecode.microbit.org/---docs#doc:/reference/input/on-logo-event:blocks:live-en",
   },
+  microphone: {
+    title: "Microphone Sound",
+    description:
+      "The micro:bit microphone detected a loud or quiet sound event. The reference below includes sound event options and V2 hardware notes.",
+    docsUrl: "https://makecode.microbit.org/reference/input/on-sound",
+    embedUrl: "https://makecode.microbit.org/---docs#doc:/reference/input/on-sound:blocks:live-en",
+  },
   shake: {
     title: "Shake Gesture",
-    label: "Shake event detected",
     description:
       "The accelerometer detected a shake gesture. The reference below includes gesture options, blocks, examples, and simulator behavior.",
     docsUrl: "https://makecode.microbit.org/reference/input/on-gesture",
@@ -118,9 +119,6 @@ export function InfoPanelContent({ mode }: { mode: InfoPanelMode }) {
       </Box>
 
       <Box>
-        <Badge colorScheme={mode === "default" ? "teal" : "purple"} mb={3}>
-          {panel.label}
-        </Badge>
         <Text color="gray.600" fontSize="sm">
           {panel.description}
         </Text>
