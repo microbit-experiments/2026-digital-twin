@@ -1,6 +1,11 @@
 export abstract class MicrobitConnector {
     abstract handleConnect(): Promise<void>;
 
+    abstract getLEDPollPeriod(): number | null;
+    abstract getAccelerometerPollPeriod(): number | null;
+    abstract getMagnetometerPollPeriod(): number | null;
+    abstract getTemperaturePollPeriod(): number | null;
+
     abstract setOnNoAuthorizedDevice(callback: () => void): void;
     abstract setOnDisconnect(callback: () => void): void;
     abstract setOnConnect(callback: () => void): void;

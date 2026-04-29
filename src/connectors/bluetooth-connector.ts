@@ -8,6 +8,11 @@ export class BlueToothConnector extends BaseConnector {
     private connected: boolean = false;
     private connWaiters: (() => void)[] = [];
 
+    private LEDPollPeriod: number = 20;
+    private accelerometerPollPeriod: number | null = null;
+    private magnetometerPollPeriod: number | null = null;
+    private temperaturePollPeriod: number | null = null;
+
     constructor() {
         super();
 
@@ -26,17 +31,41 @@ export class BlueToothConnector extends BaseConnector {
         this.ledLoop();
     }
 
+    public getLEDPollPeriod(): number { return this.LEDPollPeriod }
+    public getAccelerometerPollPeriod(): number | null { return this.accelerometerPollPeriod }
+    public getMagnetometerPollPeriod(): number | null { return this.magnetometerPollPeriod }
+    public getTemperaturePollPeriod(): number | null { return this.temperaturePollPeriod }
+
     public async handleConnect(): Promise<void> {
         await this.conn.connect();
+        await this.waitForConnect();
     }
 
     public async startUp(): Promise<void> {
+        this.log("Starting Connector")
+
+        // Get periods for pollers
+        this.accelerometerPollPeriod = await this.conn.getAccelerometerPeriod()
+        this.magnetometerPollPeriod = await this.conn.getMagnetometerPeriod()
+        this.temperaturePollPeriod = await this.conn.getTemperaturePeriod()
+
+        this.log([
+            `Poll Periods (ms):`,
+            `\tLED: ${this.LEDPollPeriod}`,
+            `\tAccelerometer: ${this.accelerometerPollPeriod}`,
+            `\tMagnetometer: ${this.magnetometerPollPeriod}`,
+            `\tTemperature: ${this.temperaturePollPeriod}`
+        ].join("\n"))
+
         // Resume all loops waiting for a connect
+        this.connected = true;
         while (1) {
             let waiter = this.connWaiters.pop()
             if (waiter == null) break;
             waiter()
         }
+
+        this.log("Startup Complete")
     }
 
     private waitForConnect(): Promise<void> {
@@ -57,7 +86,6 @@ export class BlueToothConnector extends BaseConnector {
                 this.onDisconnect?.();
                 break;
             case ConnectionStatus.Connected:
-                this.connected = true;
                 await this.startUp();
                 this.onConnect?.();
                 break;
@@ -73,6 +101,7 @@ export class BlueToothConnector extends BaseConnector {
     }
 
     private buttonAction(action: ButtonAction, upMethod?: () => void, downMethod?: () => void) {
+        if (!this.connected) { return; }
         switch (action) {
             case ButtonAction.Up:
                 upMethod?.();
@@ -96,20 +125,24 @@ export class BlueToothConnector extends BaseConnector {
     }
 
     private accelerometerListener(data: AccelerometerData): void {
+        if (!this.connected) { return; }
         const { x, y, z } = data;
         this.accelerometerUpdate?.(x, y, z);
     }
 
     private magnetometerListener(data: MagnetometerData): void {
+        if (!this.connected) { return; }
         const { x, y, z } = data;
         this.magnetometerUpdate?.(x, y, z);
     }
 
     private temperatureListener(data: TemperatureData): void {
+        if (!this.connected) { return; }
         this.temperatureUpdate?.(data.celsius);
     }
 
     private gestureListener(data: GestureData) {
+        if (!this.connected) { return; }
         switch (data.gesture) {
             case GestureEvent.TiltUp:
                 this.onTiltUp?.();
@@ -164,11 +197,10 @@ export class BlueToothConnector extends BaseConnector {
     }
 
     private async ledLoop() {
-        const pollPeriod = 20;
         while (1) {
             await this.waitForConnect()
             this.updateLEDs()
-            await new Promise(resolve => setTimeout(resolve, pollPeriod));
+            await new Promise(resolve => setTimeout(resolve, this.LEDPollPeriod));
         }
     }
 }
