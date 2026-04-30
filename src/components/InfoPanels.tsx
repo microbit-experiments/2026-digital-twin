@@ -67,7 +67,10 @@ function barLevel(level: number): number[] {
 
   for (let row = 4; row >= 5 - safeLevel; row--) {
     for (const column of columns) {
-      active.push(cell(column, row));
+      const value = cell(column, row);
+      if (value !== null) {
+        active.push(value);
+      }
     }
   }
 
