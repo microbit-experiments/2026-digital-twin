@@ -86,11 +86,15 @@ function formatInputButton(button: InputButton) {
 }
 
 function isActiveStart(behaviour: InputBehaviourKind) {
-  return behaviour === "down";
+  return behaviour === "down" || behaviour === "on" || behaviour === "loud";
 }
 
 function isActiveEnd(behaviour: InputBehaviourKind) {
-  return behaviour === "up" || behaviour === "notPressed" || behaviour === "quiet";
+  return behaviour === "up" || behaviour === "notPressed" || behaviour === "off" || behaviour === "quiet";
+}
+
+function isMicrophoneActive(behaviour: InputBehaviourKind) {
+  return behaviour === "on" || behaviour === "loud";
 }
 
 function isMicrophoneInput(input: InputBehaviour) {
@@ -377,7 +381,7 @@ function App() {
   const applyComponentVisual = useCallback((input: InputBehaviour) => {
     const behaviour = input.behaviour as string;
 
-    if (behaviour === "down" || behaviour === "loud") {
+    if (behaviour === "down" || behaviour === "on" || behaviour === "loud") {
       const existingTimeout = visualTimeoutsRef.current.get(input.button);
       if (existingTimeout !== undefined) {
         window.clearTimeout(existingTimeout);
@@ -390,7 +394,7 @@ function App() {
       return;
     }
 
-    if (behaviour === "up" || behaviour === "quiet" || behaviour === "notPressed") {
+    if (behaviour === "up" || behaviour === "off" || behaviour === "quiet" || behaviour === "notPressed") {
       const existingTimeout = visualTimeoutsRef.current.get(input.button);
       if (existingTimeout !== undefined) {
         window.clearTimeout(existingTimeout);
@@ -547,7 +551,7 @@ function App() {
     mbConnector.setOnInputBehaviour((input) => {
       applyComponentVisual(input);
 
-      if (isActiveStart(input.behaviour) || input.behaviour === "loud") {
+      if (isActiveStart(input.behaviour)) {
         activeInputsRef.current.add(input.button);
       }
 
@@ -581,7 +585,7 @@ function App() {
         idleTimeoutRef.current = window.setTimeout(() => {
           setLatestInputBehaviour(null);
           idleTimeoutRef.current = null;
-        }, INPUT_IDLE_DELAY_MS);
+        }, isMicrophoneActive(input.behaviour) ? 1200 : 500);
       } else if (activeInputsRef.current.size === 0) {
         idleTimeoutRef.current = window.setTimeout(() => {
           setLatestInputBehaviour(null);

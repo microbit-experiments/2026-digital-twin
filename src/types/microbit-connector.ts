@@ -10,6 +10,8 @@ export type InputBehaviourKind =
     | "notPressed"
     | "shortPress"
     | "longPress"
+    | "on"
+    | "off"
     | "loud"
     | "quiet"
     | "tiltUp"
