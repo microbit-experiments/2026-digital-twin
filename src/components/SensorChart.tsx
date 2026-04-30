@@ -9,11 +9,21 @@ export type SensorPoint = {
   z: number;
 };
 
+export type TemperaturePoint = {
+  time: number;
+  value: number;
+};
+
 type SensorChartProps = {
   data: SensorPoint[];
   title: string;
   maxVal: number;
   showLegend?: boolean;
+};
+
+type TemperatureChartProps = {
+  data: TemperaturePoint[];
+  title: string;
 };
 
 export function SensorChart({ data, title, maxVal, showLegend = true }: SensorChartProps) {
@@ -67,23 +77,6 @@ export function SensorChart({ data, title, maxVal, showLegend = true }: SensorCh
       .range([margin.left, margin.left + innerWidth]);
 
     const yScale = d3.scaleLinear().domain([-maxVal, maxVal]).range([margin.top + innerHeight, margin.top]);
-
-    const xAxis = d3.axisBottom(xScale).ticks(0).tickSize(0);
-    const yAxis = d3.axisLeft(yScale).ticks(0).tickSize(0);
-
-    svg
-      .append("g")
-      .attr("transform", `translate(0, ${margin.top + innerHeight})`)
-      .call(xAxis)
-      .call((g) => g.selectAll("path,line").attr("stroke", "#CBD5E0"))
-      .call((g) => g.selectAll("text").remove());
-
-    svg
-      .append("g")
-      .attr("transform", `translate(${margin.left}, 0)`)
-      .call(yAxis)
-      .call((g) => g.selectAll("path,line").attr("stroke", "#CBD5E0"))
-      .call((g) => g.selectAll("text").remove());
 
     const line = (key: "x" | "y" | "z") =>
       d3
@@ -139,7 +132,7 @@ export function SensorChart({ data, title, maxVal, showLegend = true }: SensorCh
 
   return (
     <Box ref={containerRef} w="100%">
-      <Flex justify="space-between" align="center" gap={3} mb={3} flexWrap="wrap">
+      <Flex justify="space-between" align="center" gap={3} mb={3} minH="32px" flexWrap="wrap">
         <Heading size="sm" color="gray.700">
           {title}
         </Heading>
@@ -168,6 +161,126 @@ export function SensorChart({ data, title, maxVal, showLegend = true }: SensorCh
         )}
       </Flex>
       <svg ref={svgRef} role="img" aria-label={`${title} graph for x y and z values over time`} />
+    </Box>
+  );
+}
+
+export function TemperatureChart({ data, title }: TemperatureChartProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [chartWidth, setChartWidth] = useState(0);
+  const clipId = useId().replace(/:/g, "");
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) return;
+
+    const observer = new ResizeObserver((entries) => {
+      const width = Math.floor(entries[0]?.contentRect.width ?? 0);
+      setChartWidth(width);
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!svgRef.current || chartWidth <= 0) return;
+
+    const height = 160;
+    const margin = { top: 12, right: 12, bottom: 12, left: 12 };
+    const innerWidth = Math.max(chartWidth - margin.left - margin.right, 1);
+    const innerHeight = Math.max(height - margin.top - margin.bottom, 1);
+
+    const svg = d3.select(svgRef.current);
+    svg.selectAll("*").remove();
+    svg.attr("width", chartWidth).attr("height", height).attr("viewBox", `0 0 ${chartWidth} ${height}`);
+
+    if (data.length === 0) {
+      svg
+        .append("text")
+        .attr("x", chartWidth / 2)
+        .attr("y", height / 2)
+        .attr("text-anchor", "middle")
+        .attr("fill", "#718096")
+        .style("font-size", "13px")
+        .text("Waiting for temperature samples...");
+      return;
+    }
+
+    const maxTime = data[data.length - 1]?.time ?? Date.now();
+    const minTime = Math.max(data[0]?.time ?? maxTime, maxTime - 30_000);
+    const values = data.map((point) => point.value).filter(Number.isFinite);
+    const observedMin = d3.min(values) ?? 0;
+    const observedMax = d3.max(values) ?? observedMin;
+    const padding = Math.max((observedMax - observedMin) * 0.25, 2);
+    const yMin = Math.floor(observedMin - padding);
+    const yMax = Math.ceil(observedMax + padding);
+
+    const xScale = d3
+      .scaleLinear()
+      .domain([minTime, maxTime === minTime ? minTime + 1000 : maxTime])
+      .range([margin.left, margin.left + innerWidth]);
+
+    const yScale = d3
+      .scaleLinear()
+      .domain([yMin, yMax === yMin ? yMin + 1 : yMax])
+      .range([margin.top + innerHeight, margin.top]);
+
+    const defs = svg.append("defs");
+    defs
+      .append("clipPath")
+      .attr("id", clipId)
+      .append("rect")
+      .attr("x", margin.left + 2)
+      .attr("y", margin.top)
+      .attr("width", innerWidth - 2)
+      .attr("height", innerHeight);
+
+    const line = d3
+      .line<TemperaturePoint>()
+      .x((d) => xScale(d.time))
+      .y((d) => yScale(d.value))
+      .curve(d3.curveMonotoneX);
+
+    svg
+      .append("g")
+      .attr("clip-path", `url(#${clipId})`)
+      .append("path")
+      .datum(data)
+      .attr("fill", "none")
+      .attr("stroke", "#DD6B20")
+      .attr("stroke-width", 2)
+      .attr("d", line);
+  }, [chartWidth, clipId, data]);
+
+  const latest = data[data.length - 1]?.value;
+
+  return (
+    <Box ref={containerRef} w="100%">
+      <Flex justify="space-between" align="center" gap={3} mb={3} minH="32px">
+        <Heading size="sm" color="gray.700">
+          {title}
+        </Heading>
+        {latest !== undefined && (
+          <Flex
+            align="center"
+            gap={2}
+            bg="gray.50"
+            border="1px solid"
+            borderColor="gray.200"
+            borderRadius="full"
+            px={3}
+            py={1}
+            minW="64px"
+          >
+            <Box w="16px" h="3px" bg="#DD6B20" borderRadius="full" />
+            <Text color="gray.600" fontSize="xs" fontWeight="semibold">
+              {Math.round(latest)}C
+            </Text>
+          </Flex>
+        )}
+      </Flex>
+      <svg ref={svgRef} role="img" aria-label={`${title} graph over time`} />
     </Box>
   );
 }

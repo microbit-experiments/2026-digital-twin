@@ -1,4 +1,11 @@
-function sendButton(button: string, event: string, label: string) {
+const fs = require("node:fs");
+const path = require("node:path");
+const { execSync } = require("node:child_process");
+
+const repoPublic = path.resolve(__dirname, "../public");
+const projectDir = "/tmp/mb-action-demo";
+
+const source = `function sendButton(button: string, event: string, label: string) {
     serial.writeLine('{"type":"button","button":"' + button + '","event":"' + event + '","label":"' + label + '"}')
 }
 
@@ -102,13 +109,13 @@ input.onSound(DetectedSound.Quiet, function () {
 
 serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {
     let command = serial.readLine()
-    if (command.indexOf("\"type\":\"show_text\"") >= 0) {
+    if (command.indexOf("\\"type\\":\\"show_text\\"") >= 0) {
         basic.showString("Hi")
-    } else if (command.indexOf("\"type\":\"clear_display\"") >= 0) {
+    } else if (command.indexOf("\\"type\\":\\"clear_display\\"") >= 0) {
         basic.clearScreen()
-    } else if (command.indexOf("\"type\":\"set_led\"") >= 0) {
+    } else if (command.indexOf("\\"type\\":\\"set_led\\"") >= 0) {
         led.plot(2, 2)
-    } else if (command.indexOf("\"type\":\"ping\"") >= 0) {
+    } else if (command.indexOf("\\"type\\":\\"ping\\"") >= 0) {
         serial.writeLine('{"type":"button","button":"AB","event":"click","label":"Pong"}')
     }
 })
@@ -178,3 +185,14 @@ basic.forever(function () {
     emitSensors()
     basic.pause(250)
 })
+`;
+
+if (!fs.existsSync(path.join(projectDir, "pxt.json"))) {
+  throw new Error(`Expected MakeCode project at ${projectDir}. Create it before running this script.`);
+}
+
+fs.writeFileSync(path.join(projectDir, "main.ts"), source);
+execSync("npx -y pxt build", { cwd: projectDir, stdio: "inherit" });
+fs.copyFileSync(path.join(projectDir, "built", "binary.hex"), path.join(repoPublic, "usb-serial-demo.hex"));
+fs.writeFileSync(path.join(repoPublic, "usb-serial-demo.makecode.txt"), source);
+console.log("Updated usb-serial-demo.hex");
