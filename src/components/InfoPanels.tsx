@@ -12,7 +12,8 @@ export type InfoPanelMode =
   | "shake"
   | "tiltLeft"
   | "tiltRight"
-  | "tiltUpDown"
+  | "tiltUp"
+  | "tiltDown"
   | "faceUp"
   | "faceDown"
   | "freefall"
@@ -141,17 +142,17 @@ function getMiniPreview(mode: InfoPanelMode): MiniPreview {
     };
   }
 
-  if (mode === "tiltUpDown") {
+  if (mode === "tiltUp") {
     return {
-      frames: [
-        dotAt(2, 2),
-        dotAt(2, 1),
-        dotAt(2, 0),
-        dotAt(2, 1),
-        dotAt(2, 2),
-        dotAt(2, 3),
-        dotAt(2, 4),
-      ],
+      frames: [dotAt(2, 2), dotAt(2, 1), dotAt(2, 0), dotAt(2, 1), dotAt(2, 2)],
+      accent: "#22c55e",
+      glow: "rgba(34, 197, 94, 0.45)",
+    };
+  }
+
+  if (mode === "tiltDown") {
+    return {
+      frames: [dotAt(2, 2), dotAt(2, 3), dotAt(2, 4), dotAt(2, 3), dotAt(2, 2)],
       accent: "#22c55e",
       glow: "rgba(34, 197, 94, 0.45)",
     };
@@ -239,9 +240,14 @@ const infoPanels: Record<InfoPanelMode, InfoPanelData> = {
     description: "Tilt right moves the dot right.",
     wikiUrl: "https://makecode.microbit.org/reference/input/on-gesture",
   },
-  tiltUpDown: {
-    title: "Tilt Up / Down",
-    description: "Tilt forward or back to move the dot.",
+  tiltUp: {
+    title: "Tilt Up",
+    description: "Tilt forward to move the dot up.",
+    wikiUrl: "https://makecode.microbit.org/reference/input/on-gesture",
+  },
+  tiltDown: {
+    title: "Tilt Down",
+    description: "Tilt backward to move the dot down.",
     wikiUrl: "https://makecode.microbit.org/reference/input/on-gesture",
   },
   faceUp: {
