@@ -120,8 +120,9 @@ function getGestureModeFromBehaviour(behaviour: InputBehaviourKind): InfoPanelMo
     case "tiltRight":
       return "tiltRight";
     case "tiltUp":
+      return "tiltUp";
     case "tiltDown":
-      return "tiltUpDown";
+      return "tiltDown";
     case "faceUp":
       return "faceUp";
     case "faceDown":
@@ -213,7 +214,7 @@ const actionDemoPrograms: DemoProgram[] = [
     description:
       "Single program for buttons, logo, gestures, microphone, accelerometer, magnetometer, and temperature.",
     hexPath: "/usb-serial-demo.hex",
-    supportedModes: ["default", "buttonA", "buttonB", "buttonAB", "logo", "microphone", "shake", "tiltLeft", "tiltRight", "tiltUpDown", "faceUp", "faceDown", "freefall", "accel2g", "accel3g", "accel6g", "accel8g"],
+    supportedModes: ["default", "buttonA", "buttonB", "buttonAB", "logo", "microphone", "shake", "tiltLeft", "tiltRight", "tiltUp", "tiltDown", "faceUp", "faceDown", "freefall", "accel2g", "accel3g", "accel6g", "accel8g"],
   },
   {
     id: "simple-buttons",
@@ -227,7 +228,7 @@ const actionDemoPrograms: DemoProgram[] = [
     title: "Tilt up/down",
     description: "Tilt forward/backward to move a dot up/down.",
     hexPath: "/usb-serial-demo-simple-tilt-up-down.hex",
-    supportedModes: ["default", "tiltUpDown", "faceUp", "faceDown"],
+    supportedModes: ["default", "tiltUp", "tiltDown", "faceUp", "faceDown"],
   },
   {
     id: "simple-tilt-left-right",
@@ -454,13 +455,13 @@ function App() {
 
     mbConnector.setOnTiltUp(() => {
       console.log("tiltUp");
-      setInfoPanelModeWithLock("tiltUpDown");
+      setInfoPanelModeWithLock("tiltUp");
       showGestureInput("tiltUp", "Tilt up");
     });
 
     mbConnector.setOnTiltDown(() => {
       console.log("tiltDown");
-      setInfoPanelModeWithLock("tiltUpDown");
+      setInfoPanelModeWithLock("tiltDown");
       showGestureInput("tiltDown", "Tilt down");
     });
 
