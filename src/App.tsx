@@ -224,18 +224,11 @@ const actionDemoPrograms: DemoProgram[] = [
     supportedModes: ["default", "buttonA", "buttonB", "buttonAB"],
   },
   {
-    id: "simple-tilt-up-down",
-    title: "Tilt up/down",
-    description: "Tilt forward/backward to move a dot up/down.",
-    hexPath: "/usb-serial-demo-simple-tilt-up-down.hex",
-    supportedModes: ["default", "tiltUp", "tiltDown", "faceUp", "faceDown"],
-  },
-  {
-    id: "simple-tilt-left-right",
-    title: "Tilt left/right",
-    description: "Tilt left/right to move a dot across the display.",
-    hexPath: "/usb-serial-demo-simple-tilt-left-right.hex",
-    supportedModes: ["default", "tiltLeft", "tiltRight"],
+    id: "simple-tilt",
+    title: "Tilt",
+    description: "Tilt forward, backward, left, or right to move a dot.",
+    hexPath: "/usb-serial-demo-simple-tilt.hex",
+    supportedModes: ["default", "tiltUp", "tiltDown", "tiltLeft", "tiltRight", "faceUp", "faceDown"],
   },
   {
     id: "simple-logo",
