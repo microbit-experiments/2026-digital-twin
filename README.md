@@ -42,11 +42,8 @@ The app ships with a default all-input demo plus a smaller set of focused intera
 - `usb-serial-demo-simple-buttons.hex`
   Button demo where A moves a cross left, B moves it right, and A+B recenters it.
 
-- `usb-serial-demo-simple-tilt-left-right.hex`
-  Tilt-left / tilt-right demo with a moving dot.
-
-- `usb-serial-demo-simple-tilt-up-down.hex`
-  Tilt-up / tilt-down demo with a moving dot.
+- `usb-serial-demo-simple-tilt.hex`
+  Tilt demo with a moving dot for up, down, left, and right.
 
 - `usb-serial-demo-simple-logo.hex`
   Logo demo with icon and number behavior.

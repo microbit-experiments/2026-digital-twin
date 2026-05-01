@@ -1,12 +1,4 @@
-const fs = require("node:fs");
-const path = require("node:path");
-const { execSync } = require("node:child_process");
-
-const repoPublic = path.resolve(__dirname, "../public");
-const projectDir = "/tmp/mb-action-demo";
-
-function sourceFor(mode) {
-  return `function emitSensors() {
+function emitSensors() {
     serial.writeLine('{"type":"accelerometer","x":' + input.acceleration(Dimension.X) + ',"y":' + input.acceleration(Dimension.Y) + ',"z":' + input.acceleration(Dimension.Z) + '}')
     serial.writeLine('{"type":"magnetometer","x":' + input.magneticForce(Dimension.X) + ',"y":' + input.magneticForce(Dimension.Y) + ',"z":' + input.magneticForce(Dimension.Z) + '}')
     serial.writeLine('{"type":"temperature","celsius":' + input.temperature() + '}')
@@ -161,7 +153,7 @@ function updateMicrophone() {
     micWasLoud = isLoud
 }
 
-const demoMode: string = "${mode}"
+const demoMode: string = "tilt"
 let x = 2
 let y = 2
 let wasPressedA = false
@@ -343,26 +335,3 @@ basic.forever(function () {
     emitSensors()
     basic.pause(200)
 })
-`;
-}
-
-const demos = [
-  { hex: "usb-serial-demo-simple-buttons.hex", mode: "buttons" },
-  { hex: "usb-serial-demo-simple-tilt.hex", mode: "tilt" },
-  { hex: "usb-serial-demo-simple-logo.hex", mode: "logo" },
-  { hex: "usb-serial-demo-simple-microphone.hex", mode: "microphone" },
-  { hex: "usb-serial-demo-simple-shake-impact.hex", mode: "shake-impact" },
-];
-
-if (!fs.existsSync(path.join(projectDir, "pxt.json"))) {
-  throw new Error(`Expected MakeCode project at ${projectDir}. Create it before running this script.`);
-}
-
-for (const demo of demos) {
-  const source = sourceFor(demo.mode);
-  fs.writeFileSync(path.join(projectDir, "main.ts"), source);
-  execSync("npx -y pxt build", { cwd: projectDir, stdio: "inherit" });
-  fs.copyFileSync(path.join(projectDir, "built", "binary.hex"), path.join(repoPublic, demo.hex));
-  fs.writeFileSync(path.join(repoPublic, demo.hex.replace(".hex", ".makecode.txt")), source);
-  console.log(`Updated ${demo.hex}`);
-}
