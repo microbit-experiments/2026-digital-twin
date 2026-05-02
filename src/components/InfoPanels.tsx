@@ -188,9 +188,9 @@ function getMiniPreview(mode: InfoPanelMode): MiniPreview {
   }
 
   return {
-    frames: [crossAt(2, 2), crossAt(1, 2), crossAt(2, 2), crossAt(3, 2), crossAt(2, 1), crossAt(2, 2), crossAt(2, 3)],
-    accent: "#2563eb",
-    glow: "rgba(37, 99, 235, 0.45)",
+    frames: [[1, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 22]],
+    accent: "#ef4444",
+    glow: "rgba(239, 68, 68, 0.45)",
   };
 }
 

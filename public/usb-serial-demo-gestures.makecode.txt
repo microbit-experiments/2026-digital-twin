@@ -4,6 +4,21 @@ function emitSensors() {
     serial.writeLine('{"type":"temperature","celsius":' + input.temperature() + '}')
 }
 
+function emitLedMatrix() {
+    let payload = '{"type":"led","matrix":['
+    for (let row = 0; row < 5; row += 1) {
+        if (row > 0) payload = payload + ','
+        payload = payload + '['
+        for (let col = 0; col < 5; col += 1) {
+            if (col > 0) payload = payload + ','
+            payload = payload + (led.point(col, row) ? '1' : '0')
+        }
+        payload = payload + ']'
+    }
+    payload = payload + ']}'
+    serial.writeLine(payload)
+}
+
 function sendGesture(event: string) {
     serial.writeLine('{"type":"gesture","event":"' + event + '"}')
 }
@@ -38,5 +53,6 @@ serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {
 basic.showIcon(IconNames.Heart)
 basic.forever(function () {
     emitSensors()
+    emitLedMatrix()
     basic.pause(250)
 })

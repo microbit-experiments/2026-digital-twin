@@ -20,6 +20,21 @@ function sendMicrophone(event: string) {
     serial.writeLine('{"type":"microphone","event":"' + event + '"}')
 }
 
+function emitLedMatrix() {
+    let payload = '{"type":"led","matrix":['
+    for (let row = 0; row < 5; row += 1) {
+        if (row > 0) payload = payload + ','
+        payload = payload + '['
+        for (let col = 0; col < 5; col += 1) {
+            if (col > 0) payload = payload + ','
+            payload = payload + (led.point(col, row) ? '1' : '0')
+        }
+        payload = payload + ']'
+    }
+    payload = payload + ']}'
+    serial.writeLine(payload)
+}
+
 function clamp(v: number, minimum: number, maximum: number): number {
     if (v < minimum) return minimum
     if (v > maximum) return maximum
@@ -154,6 +169,7 @@ function updateMicrophone() {
     micWasLoud = isLoud
 }
 
+
 const demoMode: string = "tilt-up-down"
 let x = 2
 let y = 2
@@ -207,6 +223,7 @@ input.onLogoEvent(TouchButtonEvent.Released, function () {
         handleLogoShort()
     }
 })
+
 
 input.onSound(DetectedSound.Loud, function () {
     sendMicrophone("loud")
@@ -287,6 +304,7 @@ serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {
     }
 })
 
+
 input.setSoundThreshold(SoundThreshold.Loud, 80)
 input.setSoundThreshold(SoundThreshold.Quiet, 45)
 
@@ -334,5 +352,6 @@ basic.forever(function () {
 
     updateMicrophone()
     emitSensors()
+    emitLedMatrix()
     basic.pause(200)
 })
