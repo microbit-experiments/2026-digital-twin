@@ -1,4 +1,4 @@
-import { AtSignIcon, BellIcon, CheckCircleIcon, InfoIcon, InfoOutlineIcon, RepeatIcon, UpDownIcon } from "@chakra-ui/icons";
+import { ArrowForwardIcon, AtSignIcon, BellIcon, CheckCircleIcon, InfoIcon, InfoOutlineIcon, RepeatIcon, UpDownIcon } from "@chakra-ui/icons";
 import {
   Badge,
   Button,
@@ -35,65 +35,16 @@ import MicrobitSVG from "./assets/microbit-drawing.svg?react";
 import MicrobitLogo from "./assets/microbit-logo.svg";
 import ConnectGif from "./assets/connect-microbit.gif";
 import { MicrobitDrawing } from "./utils/microbitDrawing";
-import { UsbSerialConnector } from "./connectors/usb-serial-connector";
-import { BluetoothConnector } from "./connectors/bluetooth-connector";
+import { BlueToothConnector } from "./connectors/bluetooth-connector";
+import { createUSBConnection } from "@microbit/microbit-connection/usb";
+import { createUniversalHexFlashDataSource } from "@microbit/microbit-connection/universal-hex";
 import {
   getInfoPanelTitle,
   InfoPanelContent,
-  type DemoProgram,
   type InfoPanelMode,
 } from "./components/InfoPanels";
-import { SensorChart, TemperatureChart, type SensorPoint, type TemperaturePoint } from "./components/SensorChart";
+import { SensorChart, type SensorPoint } from "./components/SensorChart";
 import type { InputBehaviour, InputBehaviourKind, InputButton } from "./types/microbit-connector";
-
-type ConnectionTransport = "usb" | "bluetooth";
-
-function getTransportLabel(transport: ConnectionTransport) {
-  return transport === "usb" ? "USB serial" : "Bluetooth";
-}
-
-function getConnectErrorDescription(error: unknown, transport: ConnectionTransport): string {
-  const maybeDeviceError = error as { code?: string; message?: string };
-  if (maybeDeviceError && typeof maybeDeviceError.message === "string") {
-    if (maybeDeviceError.code === "unsupported") {
-      return transport === "usb"
-        ? "WebUSB is not supported in this browser. Use Chrome or Edge on localhost/HTTPS."
-        : "Web Bluetooth is not supported in this browser. Use a browser with Web Bluetooth support on localhost/HTTPS.";
-    }
-    if (maybeDeviceError.code === "no-device-selected") {
-      return `You cancelled the ${getTransportLabel(transport)} device picker. Please select your micro:bit to connect.`;
-    }
-    if (maybeDeviceError.code === "device-in-use") {
-      return "The micro:bit is currently in use by another app/tab. Close the other connection and retry.";
-    }
-    if (maybeDeviceError.code === "permission-denied") {
-      return `${getTransportLabel(transport)} permission was denied. Ensure this origin is allowed to access ${getTransportLabel(transport)}.`;
-    }
-    if (maybeDeviceError.code === "disabled") {
-      return "Bluetooth is disabled. Enable Bluetooth in system settings and retry.";
-    }
-    if (maybeDeviceError.code === "location-disabled") {
-      return "Location services are disabled. Enable them and retry Bluetooth connection.";
-    }
-    if (maybeDeviceError.code === "pairing-information-lost") {
-      return "The micro:bit pairing information was lost. Pair the micro:bit again, then reconnect.";
-    }
-    if (maybeDeviceError.code === "connection-error" || maybeDeviceError.code === "device-disconnected") {
-      return `${maybeDeviceError.message}. Try unplugging/replugging the micro:bit and retry.`;
-    }
-    if (maybeDeviceError.code === "firmware-update-required") {
-      return "The micro:bit firmware is not compatible. Update micro:bit firmware/DAPLink first.";
-    }
-
-    return maybeDeviceError.message;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "Unknown error while connecting to the micro:bit.";
-}
 
 function formatInputButton(button: InputButton) {
   if (button === "Logo") return "Logo";
@@ -104,15 +55,11 @@ function formatInputButton(button: InputButton) {
 }
 
 function isActiveStart(behaviour: InputBehaviourKind) {
-  return behaviour === "down" || behaviour === "on" || behaviour === "loud";
+  return behaviour === "down";
 }
 
 function isActiveEnd(behaviour: InputBehaviourKind) {
-  return behaviour === "up" || behaviour === "notPressed" || behaviour === "off" || behaviour === "quiet";
-}
-
-function isMicrophoneActive(behaviour: InputBehaviourKind) {
-  return behaviour === "on" || behaviour === "loud";
+  return behaviour === "up" || behaviour === "notPressed" || behaviour === "off";
 }
 
 function isMicrophoneInput(input: InputBehaviour) {
@@ -129,58 +76,6 @@ function createGestureInput(behaviour: InputBehaviourKind, label: string): Input
   };
 }
 
-function getGestureModeFromBehaviour(behaviour: InputBehaviourKind): InfoPanelMode | null {
-  switch (behaviour) {
-    case "shake":
-      return "shake";
-    case "tiltLeft":
-      return "tiltLeft";
-    case "tiltRight":
-      return "tiltRight";
-    case "tiltUp":
-      return "tiltUp";
-    case "tiltDown":
-      return "tiltDown";
-    case "faceUp":
-      return "faceUp";
-    case "faceDown":
-      return "faceDown";
-    case "freefall":
-      return "freefall";
-    case "acceleration2g":
-      return "accel2g";
-    case "acceleration3g":
-      return "accel3g";
-    case "acceleration6g":
-      return "accel6g";
-    case "acceleration8g":
-      return "accel8g";
-    default:
-      return null;
-  }
-}
-
-function getDemoProgramsForMode(
-  demos: DemoProgram[],
-  mode: InfoPanelMode,
-): DemoProgram[] {
-  if (mode !== "default") {
-    const exact = demos.filter((demo) =>
-      demo.id !== "default" && demo.supportedModes?.includes(mode),
-    );
-    if (exact.length > 0) return exact;
-  }
-
-  const byMode = demos.filter((demo) =>
-    demo.supportedModes ? demo.supportedModes.includes(mode) : true,
-  );
-  if (byMode.length > 0) {
-    return byMode;
-  }
-
-  return demos.filter((demo) => demo.supportedModes == null || demo.supportedModes.includes("default"));
-}
-
 function findMicrobitSvgPart(target: EventTarget | null): InfoPanelMode | null {
   if (!(target instanceof Element)) return null;
 
@@ -192,143 +87,35 @@ function findMicrobitSvgPart(target: EventTarget | null): InfoPanelMode | null {
   return null;
 }
 
-function createSvgClickInput(mode: InfoPanelMode): InputBehaviour | null {
-  const timestamp = Date.now();
-
-  if (mode === "buttonA") {
-    return { button: "A", behaviour: "click", label: "Click on Website", source: "action", timestamp };
-  }
-
-  if (mode === "buttonB") {
-    return { button: "B", behaviour: "click", label: "Click on Website", source: "action", timestamp };
-  }
-
-  if (mode === "buttonAB") {
-    return { button: "AB", behaviour: "click", label: "Click on Website", source: "action", timestamp };
-  }
-
-  if (mode === "logo") {
-    return { button: "Logo", behaviour: "click", label: "Click on Website", source: "action", timestamp };
-  }
-
-  if (mode === "microphone") {
-    return { button: "Microphone", behaviour: "click", label: "Click on Website", source: "action", timestamp };
-  }
-
-  return null;
-}
-
 function isDisplayableInput(input: InputBehaviour) {
   if (isActiveEnd(input.behaviour)) return false;
   return true;
 }
 
-function getDynamicSensorMax(
-  data: SensorPoint[],
-  fallback: number,
-  minimum: number,
-  maximum: number,
-  margin = 1.2,
-): number {
-  if (data.length === 0) return fallback;
-
-  let observedMax = 0;
-  for (const point of data) {
-    const sampleMax = Math.max(Math.abs(point.x), Math.abs(point.y), Math.abs(point.z));
-    if (sampleMax > observedMax) observedMax = sampleMax;
-  }
-
-  if (!Number.isFinite(observedMax) || observedMax <= 0) {
-    return minimum;
-  }
-
-  const scaled = Math.ceil(observedMax * margin);
-  const clamped = Math.min(Math.max(scaled, minimum), maximum);
-  const step = 50;
-
-  return Math.ceil(clamped / step) * step;
-}
-
-const INPUT_IDLE_DELAY_MS = 2000;
-const actionDemoPrograms: DemoProgram[] = [
-  {
-    id: "default",
-    title: "Meet the micro:bit demo",
-    description:
-      "Single program for buttons, logo, gestures, microphone, accelerometer, magnetometer, and temperature.",
-    hexPath: "/microbit-Meet-the-microbit-for-microbit-V2.hex",
-    supportedModes: ["default", "buttonA", "buttonB", "buttonAB", "logo", "microphone", "shake", "tiltLeft", "tiltRight", "tiltUp", "tiltDown", "faceUp", "faceDown", "freefall", "accel2g", "accel3g", "accel6g", "accel8g"],
-  },
-  {
-    id: "simple-buttons",
-    title: "Buttons",
-    description: "A moves a cross left.\nB moves it right.\n\nA+B recenters it.",
-    hexPath: "/usb-serial-demo-simple-buttons.hex",
-    supportedModes: ["default", "buttonA", "buttonB", "buttonAB"],
-  },
-  {
-    id: "simple-tilt",
-    title: "Tilt",
-    description: "Tilt forward, backward, left, or right to move a dot.",
-    hexPath: "/usb-serial-demo-simple-tilt.hex",
-    supportedModes: ["default", "tiltUp", "tiltDown", "tiltLeft", "tiltRight", "faceUp", "faceDown"],
-  },
-  {
-    id: "simple-logo",
-    title: "Logo",
-    description: "Tap for a random icon. Hold for a random number.",
-    hexPath: "/usb-serial-demo-simple-logo.hex",
-    supportedModes: ["default", "logo"],
-  },
-  {
-    id: "simple-microphone",
-    title: "Microphone",
-    description: "Sound level becomes a bar. Loud sound sparkles.",
-    hexPath: "/usb-serial-demo-simple-microphone.hex",
-    supportedModes: ["default", "microphone"],
-  },
-  {
-    id: "simple-shake-impact",
-    title: "Shake / impact",
-    description: "Shake, freefall, or strong movement makes a sparkle.",
-    hexPath: "/usb-serial-demo-simple-shake-impact.hex",
-    supportedModes: ["default", "shake", "freefall", "accel2g", "accel3g", "accel6g", "accel8g"],
-  },
-];
-
 function App() {
-  const desktopSidebarWidth = "480px";
-  const navbarHeight = "72px";
+  const desktopSidebarWidth = "420px";
+  const navbarHeight = "88px";
   const toast = useToast();
   const microbitDrawing = useMemo(() => new MicrobitDrawing(), []);
-  const usbConnector = useMemo(() => new UsbSerialConnector(), []);
-  const bluetoothConnector = useMemo(() => new BluetoothConnector(), []);
-  const [connectionTransport, setConnectionTransport] = useState<ConnectionTransport>("usb");
-  const mbConnector = connectionTransport === "usb" ? usbConnector : bluetoothConnector;
+  const mbConnector = useMemo(() => new BlueToothConnector(), []);
   const [mode, setMode] = useState<"landing" | "connected">("landing");
   const [isConnecting, setIsConnecting] = useState(false);
-  const [isFlashing, setIsFlashing] = useState(false);
-  const [flashingDemoId, setFlashingDemoId] = useState<string | null>(null);
   const [isMicrobitShaking, setIsMicrobitShaking] = useState(false);
   const [infoPanelMode, setInfoPanelMode] = useState<InfoPanelMode>("default");
-  const [isInfoPanelLocked, setIsInfoPanelLocked] = useState(false);
   const [latestInputBehaviour, setLatestInputBehaviour] = useState<InputBehaviour | null>(null);
   const [accelerometerData, setAccelerometerData] = useState<SensorPoint[]>([]);
   const [magnetometerData, setMagnetometerData] = useState<SensorPoint[]>([]);
-  const [temperatureData, setTemperatureData] = useState<TemperaturePoint[]>([]);
   const shakeTimeoutRef = useRef<number | null>(null);
   const idleTimeoutRef = useRef<number | null>(null);
-  const visualTimeoutsRef = useRef(new Map<InputButton, number>());
   const activeInputsRef = useRef(new Set<InputButton>());
-  const lastPrimaryInputAtRef = useRef(0);
   const infoDisclosure = useDisclosure();
   const isLargeScreen = useBreakpointValue({ base: false, lg: true });
   const svgWidth = useBreakpointValue({
-    base: "220px",
-    sm: "260px",
-    md: "320px",
-    lg: "360px",
-    xl: "400px",
+    base: "240px",
+    sm: "300px",
+    md: "380px",
+    lg: "460px",
+    xl: "540px",
   });
 
   const triggerMicrobitShake = useCallback(() => {
@@ -346,81 +133,6 @@ function App() {
     });
   }, []);
 
-  const setComponentActive = useCallback((button: InputButton, active: boolean) => {
-    if (button === "A") {
-      microbitDrawing.buttonA = active;
-      return;
-    }
-
-    if (button === "B") {
-      microbitDrawing.buttonB = active;
-      return;
-    }
-
-    if (button === "AB") {
-      microbitDrawing.buttonA = active;
-      microbitDrawing.buttonB = active;
-      return;
-    }
-
-    if (button === "Logo") {
-      microbitDrawing.touchLogo = active;
-      return;
-    }
-
-    if (button === "Microphone") {
-      microbitDrawing.microphone = active;
-    }
-  }, [microbitDrawing]);
-
-  const pulseComponent = useCallback((button: InputButton, duration = 650) => {
-    if (button === "Gesture") {
-      triggerMicrobitShake();
-      return;
-    }
-
-    const existingTimeout = visualTimeoutsRef.current.get(button);
-    if (existingTimeout !== undefined) {
-      window.clearTimeout(existingTimeout);
-    }
-
-    setComponentActive(button, true);
-    const timeout = window.setTimeout(() => {
-      setComponentActive(button, false);
-      visualTimeoutsRef.current.delete(button);
-    }, duration);
-    visualTimeoutsRef.current.set(button, timeout);
-  }, [setComponentActive, triggerMicrobitShake]);
-
-  const applyComponentVisual = useCallback((input: InputBehaviour) => {
-    const behaviour = input.behaviour as string;
-
-    if (behaviour === "down" || behaviour === "on" || behaviour === "loud") {
-      const existingTimeout = visualTimeoutsRef.current.get(input.button);
-      if (existingTimeout !== undefined) {
-        window.clearTimeout(existingTimeout);
-        visualTimeoutsRef.current.delete(input.button);
-      }
-      setComponentActive(input.button, true);
-      if (input.button === "Microphone") {
-        pulseComponent(input.button, 1200);
-      }
-      return;
-    }
-
-    if (behaviour === "up" || behaviour === "off" || behaviour === "quiet" || behaviour === "notPressed") {
-      const existingTimeout = visualTimeoutsRef.current.get(input.button);
-      if (existingTimeout !== undefined) {
-        window.clearTimeout(existingTimeout);
-        visualTimeoutsRef.current.delete(input.button);
-      }
-      setComponentActive(input.button, false);
-      return;
-    }
-
-    pulseComponent(input.button);
-  }, [pulseComponent, setComponentActive]);
-
   useEffect(() => {
     return () => {
       if (shakeTimeoutRef.current !== null) {
@@ -429,20 +141,8 @@ function App() {
       if (idleTimeoutRef.current !== null) {
         window.clearTimeout(idleTimeoutRef.current);
       }
-      for (const timeout of visualTimeoutsRef.current.values()) {
-        window.clearTimeout(timeout);
-      }
-      visualTimeoutsRef.current.clear();
     };
   }, []);
-
-  const setInfoPanelModeWithLock = useCallback((nextMode: InfoPanelMode, force = false) => {
-    if (!force && isInfoPanelLocked) {
-      return;
-    }
-
-    setInfoPanelMode(nextMode);
-  }, [isInfoPanelLocked]);
 
   useEffect(() => {
     const showGestureInput = (behaviour: InputBehaviourKind, label: string) => {
@@ -456,76 +156,63 @@ function App() {
       idleTimeoutRef.current = window.setTimeout(() => {
         setLatestInputBehaviour(null);
         idleTimeoutRef.current = null;
-      }, INPUT_IDLE_DELAY_MS);
+      }, 1200);
     };
 
-    mbConnector.setTemperatureUpdate((value) => {
-      setTemperatureData((previous) => {
-        const next = [...previous, { time: Date.now(), value }];
-        return next.slice(-150);
-      });
+    // TODO Replace placeholder handlers
+    mbConnector.setTemperatureUpdate((x) => {
+      console.log("Temperature: ", x);
     });
 
     mbConnector.setOnTiltUp(() => {
       console.log("tiltUp");
-      setInfoPanelModeWithLock("tiltUp");
       showGestureInput("tiltUp", "Tilt up");
     });
 
     mbConnector.setOnTiltDown(() => {
       console.log("tiltDown");
-      setInfoPanelModeWithLock("tiltDown");
       showGestureInput("tiltDown", "Tilt down");
     });
 
     mbConnector.setOnTiltLeft(() => {
       console.log("tiltLeft");
-      setInfoPanelModeWithLock("tiltLeft");
       showGestureInput("tiltLeft", "Tilt left");
     });
 
     mbConnector.setOnTiltRight(() => {
       console.log("tiltRight");
-      setInfoPanelModeWithLock("tiltRight");
       showGestureInput("tiltRight", "Tilt right");
     });
 
     mbConnector.setOnFaceUp(() => {
       console.log("faceUp");
-      setInfoPanelModeWithLock("faceUp");
       showGestureInput("faceUp", "Face up");
     });
 
     mbConnector.setOnFaceDown(() => {
       console.log("faceDown");
-      setInfoPanelModeWithLock("faceDown");
       showGestureInput("faceDown", "Face down");
     });
 
     mbConnector.setOnFreefall(() => {
       console.log("freefall");
-      setInfoPanelModeWithLock("freefall");
       showGestureInput("freefall", "Freefall");
     });
 
     mbConnector.setOnAcceleration3g(() => {
       console.log("acceleration3g");
-      setInfoPanelModeWithLock("accel3g");
     });
 
     mbConnector.setOnAcceleration6g(() => {
       console.log("acceleration6g");
-      setInfoPanelModeWithLock("accel6g");
     });
 
     mbConnector.setOnAcceleration8g(() => {
       console.log("acceleration8g");
-      setInfoPanelModeWithLock("accel8g");
     });
 
     mbConnector.setOnAcceleration2g(() => {
       console.log("acceleration2g");
-      setInfoPanelModeWithLock("accel2g");
     });
 
     mbConnector.setOnNoAuthorizedDevice(() => {
@@ -550,22 +237,25 @@ function App() {
 
     mbConnector.setOnButtonADown(() => {
       microbitDrawing.buttonA = true;
-      setInfoPanelModeWithLock("buttonA");
+      setInfoPanelMode("buttonA");
     });
     mbConnector.setOnButtonAUp(() => {
       microbitDrawing.buttonA = false;
     });
     mbConnector.setOnButtonBDown(() => {
       microbitDrawing.buttonB = true;
-      setInfoPanelModeWithLock("buttonB");
+      setInfoPanelMode("buttonB");
     });
     mbConnector.setOnButtonBUp(() => {
       microbitDrawing.buttonB = false;
     });
     mbConnector.setOnInputBehaviour((input) => {
-      applyComponentVisual(input);
+      if (idleTimeoutRef.current !== null) {
+        window.clearTimeout(idleTimeoutRef.current);
+        idleTimeoutRef.current = null;
+      }
 
-      if (isActiveStart(input.behaviour)) {
+      if (isActiveStart(input.behaviour) || input.behaviour === "on") {
         activeInputsRef.current.add(input.button);
       }
 
@@ -574,69 +264,41 @@ function App() {
       }
 
       const shouldDisplay = isDisplayableInput(input);
-      const isMicrophone = isMicrophoneInput(input);
-      const hasActivePrimaryInput = [...activeInputsRef.current].some((button) => button !== "Microphone");
-      const microphoneCanTakeFocus = Date.now() - lastPrimaryInputAtRef.current > INPUT_IDLE_DELAY_MS && !hasActivePrimaryInput;
-
-      if (!isMicrophone && (shouldDisplay || isActiveStart(input.behaviour))) {
-        lastPrimaryInputAtRef.current = Date.now();
-      }
-
-      if (isMicrophone && !microphoneCanTakeFocus) {
-        return;
-      }
-
-      if (idleTimeoutRef.current !== null) {
-        window.clearTimeout(idleTimeoutRef.current);
-        idleTimeoutRef.current = null;
-      }
-
-      if (isActiveEnd(input.behaviour) && !isMicrophone) {
-        setLatestInputBehaviour(null);
-        return;
-      }
-
-      if (shouldDisplay || isMicrophone) {
+      if (shouldDisplay || isMicrophoneInput(input)) {
         setLatestInputBehaviour(input);
+      } else if (activeInputsRef.current.size === 0) {
+        setLatestInputBehaviour(null);
       }
 
-      if (isMicrophone) {
+      if (isMicrophoneInput(input)) {
         idleTimeoutRef.current = window.setTimeout(() => {
           setLatestInputBehaviour(null);
           idleTimeoutRef.current = null;
-        }, isMicrophoneActive(input.behaviour) ? 1200 : 500);
+        }, input.behaviour === "on" ? 1200 : 500);
       } else if (activeInputsRef.current.size === 0) {
         idleTimeoutRef.current = window.setTimeout(() => {
           setLatestInputBehaviour(null);
           idleTimeoutRef.current = null;
-        }, INPUT_IDLE_DELAY_MS);
+        }, shouldDisplay ? 900 : 0);
       }
 
       console.log("Input behaviour: ", `${formatInputButton(input.button)} ${input.label}`);
 
       if (shouldDisplay || isActiveStart(input.behaviour)) {
-        if (input.button === "A") setInfoPanelModeWithLock("buttonA");
-        else if (input.button === "B") setInfoPanelModeWithLock("buttonB");
-        else if (input.button === "AB") setInfoPanelModeWithLock("buttonAB");
-        else if (input.button === "Logo") setInfoPanelModeWithLock("logo");
-        else if (input.button === "Microphone" && microphoneCanTakeFocus) setInfoPanelModeWithLock("microphone");
-        else if (input.button === "Gesture") {
-          const nextMode = getGestureModeFromBehaviour(input.behaviour);
-          if (nextMode) {
-            setInfoPanelModeWithLock(nextMode);
-          }
-        }
+        if (input.button === "A") setInfoPanelMode("buttonA");
+        if (input.button === "B") setInfoPanelMode("buttonB");
+        if (input.button === "Logo") setInfoPanelMode("logo");
       }
     });
     mbConnector.setOnLogoDown(() => {
       microbitDrawing.touchLogo = true;
-      setInfoPanelModeWithLock("logo");
+      setInfoPanelMode("logo");
     });
     mbConnector.setOnLogoUp(() => {
       microbitDrawing.touchLogo = false;
     });
     mbConnector.setOnShake(() => {
-      setInfoPanelModeWithLock("shake");
+      setInfoPanelMode("shake");
       triggerMicrobitShake();
     });
 
@@ -667,126 +329,66 @@ function App() {
         return next.slice(-150);
       });
     });
-  }, [applyComponentVisual, mbConnector, microbitDrawing, setInfoPanelModeWithLock, triggerMicrobitShake]);
+  }, [mbConnector, microbitDrawing, triggerMicrobitShake]);
+
+  const infoPanelBody = <InfoPanelContent mode={infoPanelMode} />;
 
   const openInfoPanel = useCallback((nextMode: InfoPanelMode) => {
-    setInfoPanelModeWithLock(nextMode);
+    setInfoPanelMode(nextMode);
     if (!isLargeScreen) {
       infoDisclosure.onOpen();
     }
-  }, [infoDisclosure, isLargeScreen, setInfoPanelModeWithLock]);
+  }, [infoDisclosure, isLargeScreen]);
 
   const handleMicrobitDrawingClick = useCallback((event: MouseEvent<HTMLDivElement>) => {
     const nextMode = findMicrobitSvgPart(event.target);
     if (!nextMode) return;
 
     openInfoPanel(nextMode);
-    const input = createSvgClickInput(nextMode);
-    if (!input) return;
+  }, [openInfoPanel]);
 
-    applyComponentVisual(input);
-    setLatestInputBehaviour(input);
-    lastPrimaryInputAtRef.current = Date.now();
-
-    if (idleTimeoutRef.current !== null) {
-      window.clearTimeout(idleTimeoutRef.current);
-    }
-
-    idleTimeoutRef.current = window.setTimeout(() => {
-      setLatestInputBehaviour(null);
-      idleTimeoutRef.current = null;
-    }, INPUT_IDLE_DELAY_MS);
-  }, [applyComponentVisual, openInfoPanel]);
-
-  const handleConnect = useCallback((transport: ConnectionTransport) => {
+  const handleConnect = useCallback(() => {
     if (isConnecting) return;
-    const connector = transport === "usb" ? usbConnector : bluetoothConnector;
-    setConnectionTransport(transport);
     setIsConnecting(true);
-    const connectPromise = connector.handleConnect();
-    const toastId = toast({
-      title: `Connecting over ${getTransportLabel(transport)}...`,
-      status: "loading",
-      isClosable: false,
-      duration: null,
+    const connectPromise = mbConnector.handleConnect();
+
+    toast.promise(connectPromise, {
+      loading: { title: "Connecting to the Micro:bit…" },
+      success: { title: "Dummy Micro:bit is connected!" },
+      error: { title: "Unable to connect to the dummy Micro:bit." },
     });
 
     connectPromise
-      .then(() => {
-        toast.update(toastId, {
-          title: `Micro:bit ${getTransportLabel(transport)} is connected.`,
-          status: "success",
-          duration: 2500,
-          isClosable: true,
-        });
-        setMode("connected");
-      })
-      .catch((error) => {
-        toast.update(toastId, {
-          title: `Unable to connect to the micro:bit over ${getTransportLabel(transport)}.`,
-          description: getConnectErrorDescription(error, transport),
-          status: "error",
-          duration: 9000,
-          isClosable: true,
-        });
-        setMode("landing");
-      })
+      .then(() => setMode("connected"))
+      .catch(() => setMode("landing"))
       .finally(() => setIsConnecting(false));
-  }, [bluetoothConnector, isConnecting, toast, usbConnector]);
+  }, [mbConnector, isConnecting, toast]);
 
-  const handleFlashDemoHex = useCallback((demo: DemoProgram) => {
-    if (isFlashing || connectionTransport !== "usb") return;
+  const handleFlashDemo = () => {
+    const flash = async () => {
+      const usb = createUSBConnection();
+      await usb.connect();
 
-    setFlashingDemoId(demo.id);
-    setIsFlashing(true);
-    const flashingPromise = usbConnector.flashHexFromUrl(demo.hexPath);
+      const response = await fetch("/Meet-the-microbit-for-microbit-V2.hex");
+      const universalHexString = await response.text();
+
+      await usb.flash(createUniversalHexFlashDataSource(universalHexString), {
+        partial: true,
+        // TODO: Add flashing percentage
+        // progress: (percentage: number | undefined) => {
+        //   console.log("Flashing: " + percentage);
+        // },
+      });
+    };
+
+    const flashingPromise = flash();
 
     toast.promise(flashingPromise, {
-      loading: { title: `Flashing ${demo.title}...` },
-      success: { title: `${demo.title} flashed. Listening on USB serial.` },
-      error: { title: "Failed to flash demo program." },
-    });
-
-    flashingPromise
-      .then(() => setMode("connected"))
-      .finally(() => {
-        setIsFlashing(false);
-        setFlashingDemoId(null);
-      });
-  }, [connectionTransport, isFlashing, toast, usbConnector]);
-
-  const demoProgramsForCurrentPanel = useMemo(
-    () => getDemoProgramsForMode(actionDemoPrograms, infoPanelMode),
-    [infoPanelMode],
-  );
-  const defaultDemoProgram = actionDemoPrograms.find((demo) => demo.id === "default");
-  const currentDemoForPanel = useMemo(() => {
-    if (infoPanelMode === "default") {
-      return defaultDemoProgram;
-    }
-
-    return demoProgramsForCurrentPanel.find((demo) => demo.id !== "default") ?? defaultDemoProgram;
-  }, [demoProgramsForCurrentPanel, defaultDemoProgram, infoPanelMode]);
-  const restoreDemoForPanel = currentDemoForPanel?.id === defaultDemoProgram?.id ? undefined : defaultDemoProgram;
-
-  const infoPanelBody = (
-    <InfoPanelContent
-      mode={infoPanelMode}
-      currentDemo={currentDemoForPanel}
-      restoreDemo={restoreDemoForPanel}
-      flashUnavailableReason={
-        connectionTransport === "bluetooth"
-          ? "Demo flashing is USB-only in this web app. Bluetooth stays connected to firmware already running on the micro:bit."
-          : undefined
-      }
-      isFlashing={isFlashing}
-      flashingDemoId={flashingDemoId}
-      onFlashDemo={connectionTransport === "usb" ? handleFlashDemoHex : undefined}
-      isPanelLocked={isInfoPanelLocked}
-      onReturnHome={() => setInfoPanelModeWithLock("default", true)}
-      onTogglePanelLock={() => setIsInfoPanelLocked((value) => !value)}
-    />
-  );
+      loading: { title: "Flashing..." },
+      success: { title: "Demo Program Successfully Flashed!" },
+      error: { title: "Failed to Flash Demo Program :(" }
+    })
+  };
 
   const isDesktopSidebarVisible = mode === "connected" && Boolean(isLargeScreen);
   const isMobileInfoDrawerOpen = mode === "connected" && !isLargeScreen && infoDisclosure.isOpen;
@@ -797,13 +399,23 @@ function App() {
       visualType: latestInputBehaviour.button,
       isIdle: false,
     }
-    : { component: "Status", event: "Idle", visualType: null, isIdle: true };
+    : infoPanelMode === "shake"
+      ? { component: "Gesture", event: "Shake", visualType: "Gesture", isIdle: false }
+      : infoPanelMode === "buttonA"
+        ? { component: "Button A", event: "Selected", visualType: "A", isIdle: false }
+        : infoPanelMode === "buttonB"
+          ? { component: "Button B", event: "Selected", visualType: "B", isIdle: false }
+          : infoPanelMode === "logo"
+            ? { component: "Logo", event: "Selected", visualType: "Logo", isIdle: false }
+            : infoPanelMode === "microphone"
+              ? { component: "Microphone", event: "Selected", visualType: "Microphone", isIdle: false }
+              : { component: "Status", event: "Idle", visualType: null, isIdle: true };
 
   return (
     <Container maxW="100%" minH="100vh" px={0} bg="#f7f9fc">
       <Flex
         as="nav"
-        px={{ base: 4, md: 6 }}
+        px={{ base: 4, md: 8 }}
         h={navbarHeight}
         w="100%"
         maxW="100%"
@@ -826,7 +438,7 @@ function App() {
             alignItems="center"
             flexShrink={0}
           >
-            <Image src={MicrobitLogo} alt="micro:bit" h="36px" w="auto" />
+            <Image src={MicrobitLogo} alt="micro:bit" h="44px" w="auto" />
           </Box>
           <Heading size={{ base: "sm", md: "md" }}>Digital Twin</Heading>
           {mode === "connected" && (
@@ -844,11 +456,20 @@ function App() {
               gap={2}
             >
               <CheckCircleIcon />
-              {getTransportLabel(connectionTransport)} connected
+              Connected
             </Badge>
           )}
         </HStack>
         <Spacer />
+        <Button
+          rightIcon={<ArrowForwardIcon />}
+          colorScheme="teal"
+          variant="solid"
+          boxShadow="sm"
+          onClick={handleFlashDemo}
+        >
+          Flash Demo
+        </Button>
         {mode === "connected" && (
           <IconButton
             aria-label="Toggle info panel"
@@ -883,8 +504,8 @@ function App() {
               <CardHeader textAlign="center">
                 <Heading size="lg">Connect Your Microbit</Heading>
                 <Text mt={2} color="gray.600">
-                  Connect over USB to flash demos, or connect over Bluetooth to mirror firmware already
-                  running on the micro:bit.
+                  Bring a Micro:bit to life with a dummy connector that simulates real events before
+                  you have the hardware in hand.
                 </Text>
               </CardHeader>
               <CardBody>
@@ -897,29 +518,17 @@ function App() {
                   />
                 </Stack>
               </CardBody>
-              <CardFooter justify="center" gap={3} flexWrap="wrap">
+              <CardFooter justify="center">
                 <Button
                   colorScheme="teal"
+                  rightIcon={<ArrowForwardIcon />}
                   onClick={() => {
-                    setInfoPanelModeWithLock("default", true);
-                    handleConnect("usb");
+                    setInfoPanelMode("default");
+                    handleConnect();
                   }}
-                  isLoading={isConnecting && connectionTransport === "usb"}
-                  isDisabled={isConnecting}
+                  isLoading={isConnecting}
                 >
-                  Connect USB
-                </Button>
-                <Button
-                  colorScheme="blue"
-                  variant="outline"
-                  onClick={() => {
-                    setInfoPanelModeWithLock("default", true);
-                    handleConnect("bluetooth");
-                  }}
-                  isLoading={isConnecting && connectionTransport === "bluetooth"}
-                  isDisabled={isConnecting}
-                >
-                  Connect Bluetooth
+                  Connect
                 </Button>
               </CardFooter>
             </Card>
@@ -929,25 +538,25 @@ function App() {
         <Container
           maxW="100%"
           px={{ base: 4, md: 6, xl: 8 }}
-          py={{ base: 3, md: 4 }}
+          py={{ base: 4, md: 6 }}
         >
           <Grid
             templateColumns={{ base: "1fr", xl: `minmax(0, 1fr) ${desktopSidebarWidth}` }}
-            gap={4}
+            gap={6}
             alignItems="start"
           >
             <GridItem minW={0}>
-              <Stack spacing={4}>
+              <Stack spacing={6}>
                 <Box
                   bg="white"
                   border="1px solid"
                   borderColor="gray.200"
                   borderRadius="8px"
                   boxShadow="0 14px 32px rgba(15, 23, 42, 0.08)"
-                  px={{ base: 4, md: 5 }}
-                  py={{ base: 3, md: 4 }}
+                  px={{ base: 4, md: 6 }}
+                  py={{ base: 4, md: 5 }}
                 >
-                  <Center minH={{ base: "220px", lg: "280px" }}>
+                  <Center minH={{ base: "260px", lg: "360px" }}>
                     <Box
                       display="inline-block"
                       transformOrigin="center center"
@@ -968,7 +577,7 @@ function App() {
                         },
                       }}
                     >
-                      <MicrobitSVG width={svgWidth ?? "300px"} />
+                      <MicrobitSVG width={svgWidth ?? "320px"} />
                     </Box>
                   </Center>
 
@@ -978,15 +587,15 @@ function App() {
                     border="1px solid"
                     borderColor={currentInputDisplay.isIdle ? "gray.200" : "blue.100"}
                     borderRadius="8px"
-                    px={{ base: 4, md: 5 }}
-                    py={{ base: 3, md: 4 }}
-                    mt={3}
+                    px={{ base: 4, md: 6 }}
+                    py={{ base: 4, md: 5 }}
+                    mt={4}
                     maxW="640px"
                     mx="auto"
                   >
                     <Center
-                      w={{ base: "44px", md: "48px" }}
-                      h={{ base: "44px", md: "48px" }}
+                      w={{ base: "48px", md: "56px" }}
+                      h={{ base: "48px", md: "56px" }}
                       borderRadius="8px"
                       bg={currentInputDisplay.isIdle ? "white" : "blue.100"}
                       color={currentInputDisplay.isIdle ? "gray.500" : "blue.700"}
@@ -1002,8 +611,6 @@ function App() {
                         <AtSignIcon boxSize={6} />
                       ) : currentInputDisplay.visualType === "AB" ? (
                         <RepeatIcon boxSize={6} />
-                      ) : currentInputDisplay.visualType === "A" || currentInputDisplay.visualType === "B" ? (
-                        currentInputDisplay.visualType
                       ) : !currentInputDisplay.isIdle ? (
                         <CheckCircleIcon boxSize={6} />
                       ) : (
@@ -1020,7 +627,7 @@ function App() {
                         <Text color="gray.500" fontSize="sm">
                           Component
                         </Text>
-                        <Text color={currentInputDisplay.isIdle ? "gray.700" : "blue.800"} fontWeight="bold" fontSize={{ base: "lg", md: "xl" }}>
+                        <Text color={currentInputDisplay.isIdle ? "gray.700" : "blue.800"} fontWeight="bold" fontSize={{ base: "xl", md: "2xl" }}>
                           {currentInputDisplay.component}
                         </Text>
                       </Box>
@@ -1034,7 +641,7 @@ function App() {
                       <Text color="gray.500" fontSize="sm">
                           Event
                       </Text>
-                        <Text color={currentInputDisplay.isIdle ? "gray.700" : "blue.800"} fontWeight="bold" fontSize={{ base: "lg", md: "xl" }}>
+                        <Text color={currentInputDisplay.isIdle ? "gray.700" : "blue.800"} fontWeight="bold" fontSize={{ base: "xl", md: "2xl" }}>
                           {currentInputDisplay.event}
                       </Text>
                     </Box>
@@ -1042,7 +649,7 @@ function App() {
                   </HStack>
                 </Box>
 
-                <SimpleGrid columns={{ base: 1, lg: 3 }} spacing={6}>
+                <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
                   <Box
                     bg="white"
                     border="1px solid"
@@ -1071,23 +678,8 @@ function App() {
                     <SensorChart
                       data={magnetometerData}
                       title="Magnetometer"
-                      maxVal={
-                        connectionTransport === "usb"
-                          ? getDynamicSensorMax(magnetometerData, 3000, 200, 5000)
-                          : 50000
-                      }
+                      maxVal={50000}
                     />
-                  </Box>
-                  <Box
-                    bg="white"
-                    border="1px solid"
-                    borderColor="gray.200"
-                    borderRadius="8px"
-                    px={5}
-                    py={5}
-                    boxShadow="0 10px 24px rgba(15, 23, 42, 0.06)"
-                  >
-                    <TemperatureChart data={temperatureData} title="Temperature" />
                   </Box>
                 </SimpleGrid>
               </Stack>
@@ -1097,8 +689,8 @@ function App() {
               <GridItem minW={0}>
                 <Box
                   position="sticky"
-                  top={`calc(${navbarHeight} + 16px)`}
-                  maxH={`calc(100dvh - ${navbarHeight} - 32px)`}
+                  top={`calc(${navbarHeight} + 24px)`}
+                  maxH={`calc(100dvh - ${navbarHeight} - 48px)`}
                   bg="white"
                   border="1px solid"
                   borderColor="gray.200"
