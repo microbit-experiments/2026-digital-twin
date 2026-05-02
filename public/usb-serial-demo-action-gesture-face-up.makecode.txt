@@ -20,6 +20,21 @@ function sendMicrophone(event: string) {
     serial.writeLine('{"type":"microphone","event":"' + event + '"}')
 }
 
+function emitLedMatrix() {
+    let payload = '{"type":"led","matrix":['
+    for (let row = 0; row < 5; row += 1) {
+        if (row > 0) payload = payload + ','
+        payload = payload + '['
+        for (let col = 0; col < 5; col += 1) {
+            if (col > 0) payload = payload + ','
+            payload = payload + (led.point(col, row) ? '1' : '0')
+        }
+        payload = payload + ']'
+    }
+    payload = payload + ']}'
+    serial.writeLine(payload)
+}
+
 function runForMode(mode: string, callback: () => void) {
     if (actionMode === mode) {
         callback();
@@ -185,6 +200,7 @@ function actionMicrophoneLoud() {
 function actionMicrophoneQuiet() {
     basic.showString('QUIET')
 }
+
 
 function actionGesture() {
     renderLiquidPulse()
@@ -369,6 +385,7 @@ input.onLogoEvent(TouchButtonEvent.Released, function () {
     sendButton("Logo", "up", "Released")
 })
 
+
 input.onSound(DetectedSound.Loud, function () {
     sendMicrophone("loud")
     runForMode("microphone", actionMicrophoneLoud)
@@ -503,6 +520,7 @@ basic.forever(function () {
     inTiltDownWindow = pitch < -50
 
     emitSensors()
+    emitLedMatrix()
     runForMode("gesture-tilt-left", actionTiltSideMode)
     runForMode("gesture-tilt-right", actionTiltSideMode)
     runForMode("gesture-tilt-up-down", actionTiltMode)

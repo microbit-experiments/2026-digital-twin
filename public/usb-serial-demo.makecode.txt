@@ -10,6 +10,21 @@ function sendMicrophone(event: string) {
     serial.writeLine('{"type":"microphone","event":"' + event + '"}')
 }
 
+function emitLedMatrix() {
+    let payload = '{"type":"led","matrix":['
+    for (let row = 0; row < 5; row += 1) {
+        if (row > 0) payload = payload + ','
+        payload = payload + '['
+        for (let col = 0; col < 5; col += 1) {
+            if (col > 0) payload = payload + ','
+            payload = payload + (led.point(col, row) ? '1' : '0')
+        }
+        payload = payload + ']'
+    }
+    payload = payload + ']}'
+    serial.writeLine(payload)
+}
+
 function emitSensors() {
     serial.writeLine('{"type":"accelerometer","x":' + input.acceleration(Dimension.X) + ',"y":' + input.acceleration(Dimension.Y) + ',"z":' + input.acceleration(Dimension.Z) + '}')
     serial.writeLine('{"type":"magnetometer","x":' + input.magneticForce(Dimension.X) + ',"y":' + input.magneticForce(Dimension.Y) + ',"z":' + input.magneticForce(Dimension.Z) + '}')
@@ -29,6 +44,7 @@ function updateMicrophone() {
         micWasLoud = false
     }
 }
+
 
 input.onButtonPressed(Button.A, function () {
     sendButton("A", "click", "Click")
@@ -90,6 +106,7 @@ input.onLogoEvent(TouchButtonEvent.Pressed, function () {
     sendButton("Logo", "click", "Click")
 })
 
+
 input.onSound(DetectedSound.Loud, function () {
     sendMicrophone("loud")
     micWasLoud = true
@@ -112,6 +129,7 @@ serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {
         serial.writeLine('{"type":"button","button":"AB","event":"click","label":"Pong"}')
     }
 })
+
 
 input.setSoundThreshold(SoundThreshold.Loud, 80)
 input.setSoundThreshold(SoundThreshold.Quiet, 45)
@@ -176,5 +194,6 @@ basic.forever(function () {
 
     updateMicrophone()
     emitSensors()
+    emitLedMatrix()
     basic.pause(250)
 })

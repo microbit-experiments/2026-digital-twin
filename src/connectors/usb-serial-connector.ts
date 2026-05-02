@@ -9,7 +9,7 @@ import { BaseConnector } from "./base-connector";
 import type { MicrobitSerialEvent, WebsiteSerialCommand } from "../types/serial-protocol";
 import type { InputBehaviourKind, InputButton } from "../types/microbit-connector";
 
-const DEFAULT_DEMO_HEX_PATH = "/usb-serial-demo.hex";
+const DEFAULT_DEMO_HEX_PATH = "/microbit-Meet-the-microbit-for-microbit-V2.hex";
 
 function buttonLabel(button: InputButton, event: InputBehaviourKind): string {
     if (event === "down") return "Pressed";

@@ -5,10 +5,12 @@ import { ButtonAction, GestureEvent, ConnectionStatus } from "@microbit/microbit
 import type { InputBehaviourKind } from "../types/microbit-connector";
 import { EventSourceID, MicrophoneLEDState } from "../types/event-data";
 
-export class BlueToothConnector extends BaseConnector {
+export class BluetoothConnector extends BaseConnector {
     private conn: MicrobitBluetoothConnection = createBluetoothConnection()
     private connected: boolean = false;
     private connWaiters: (() => void)[] = [];
+    private initialized = false;
+    private initializing: Promise<void> | null = null;
 
     private LEDPollPeriod: number = 20;
     private accelerometerPollPeriod: number | null = null;
@@ -19,6 +21,9 @@ export class BlueToothConnector extends BaseConnector {
         super();
 
         this.conn.addEventListener("status", this.statusListener.bind(this));
+        this.conn.addEventListener("backgrounderror", ({ error }) => {
+            this.log(`Bluetooth background error (${error.code}): ${error.message}`);
+        });
 
         this.conn.addEventListener("buttonaaction", this.buttonAListener.bind(this));
         this.conn.addEventListener("buttonbaction", this.buttonBListener.bind(this));
@@ -41,17 +46,74 @@ export class BlueToothConnector extends BaseConnector {
     public getTemperaturePollPeriod(): number | null { return this.temperaturePollPeriod }
 
     public async handleConnect(): Promise<void> {
+        await this.ensureInitialized();
+        await this.ensureAvailableForConnection();
         await this.conn.connect();
         await this.waitForConnect();
+    }
+
+    private async ensureInitialized(): Promise<void> {
+        if (this.initialized) return;
+        if (this.initializing === null) {
+            this.initializing = this.conn.initialize();
+        }
+
+        try {
+            await this.initializing;
+            this.initialized = true;
+        } finally {
+            if (!this.initialized) {
+                this.initializing = null;
+            }
+        }
+    }
+
+    private async ensureAvailableForConnection(): Promise<void> {
+        if (typeof window !== "undefined" && !window.isSecureContext) {
+            throw new Error("Web Bluetooth requires HTTPS or localhost.");
+        }
+
+        const availability = await this.conn.checkAvailability();
+        if (availability === "unsupported") {
+            throw new Error("Web Bluetooth is not supported in this browser.");
+        }
+        if (availability === "disabled") {
+            throw new Error("Bluetooth is currently disabled.");
+        }
+        if (availability === "permission-denied") {
+            throw new Error("Bluetooth permission was denied for this site.");
+        }
+        if (availability === "location-disabled") {
+            throw new Error("Location services are disabled.");
+        }
+    }
+
+    private async getOptionalPeriod(name: string, getter: () => Promise<number>): Promise<number | null> {
+        try {
+            return await getter();
+        } catch (error) {
+            this.log(`${name} period unavailable. The current micro:bit program may not include that Bluetooth service.`);
+            this.log(error);
+            return null;
+        }
+    }
+
+    private async subscribeToOptionalEvent(source: EventSourceID, value: MicrophoneLEDState): Promise<void> {
+        try {
+            await this.conn.subscribeToEvent(source, value);
+        } catch (error) {
+            this.log("Microphone LED event subscription unavailable. The current micro:bit program may not include the Bluetooth event service.");
+            this.log(error);
+        }
     }
 
     public async startUp(): Promise<void> {
         this.log("Starting Connector")
 
         // Get periods for pollers
-        this.accelerometerPollPeriod = await this.conn.getAccelerometerPeriod()
-        this.magnetometerPollPeriod = await this.conn.getMagnetometerPeriod()
-        this.temperaturePollPeriod = await this.conn.getTemperaturePeriod()
+        this.accelerometerPollPeriod = await this.getOptionalPeriod("Accelerometer", () => this.conn.getAccelerometerPeriod())
+        this.magnetometerPollPeriod = await this.getOptionalPeriod("Magnetometer", () => this.conn.getMagnetometerPeriod())
+        this.temperaturePollPeriod = await this.getOptionalPeriod("Temperature", () => this.conn.getTemperaturePeriod())
 
         this.log([
             `Poll Periods (ms):`,
@@ -62,8 +124,8 @@ export class BlueToothConnector extends BaseConnector {
         ].join("\n"))
 
         // Subscribe to events
-        await this.conn.subscribeToEvent(EventSourceID.MicrophoneLED, MicrophoneLEDState.On)
-        await this.conn.subscribeToEvent(EventSourceID.MicrophoneLED, MicrophoneLEDState.Off)
+        await this.subscribeToOptionalEvent(EventSourceID.MicrophoneLED, MicrophoneLEDState.On)
+        await this.subscribeToOptionalEvent(EventSourceID.MicrophoneLED, MicrophoneLEDState.Off)
 
         // Resume all loops waiting for a connect
         this.connected = true;
@@ -294,3 +356,5 @@ export class BlueToothConnector extends BaseConnector {
         }
     }
 }
+
+export { BluetoothConnector as BlueToothConnector };

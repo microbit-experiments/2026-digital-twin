@@ -36,6 +36,7 @@ import MicrobitLogo from "./assets/microbit-logo.svg";
 import ConnectGif from "./assets/connect-microbit.gif";
 import { MicrobitDrawing } from "./utils/microbitDrawing";
 import { UsbSerialConnector } from "./connectors/usb-serial-connector";
+import { BluetoothConnector } from "./connectors/bluetooth-connector";
 import {
   getInfoPanelTitle,
   InfoPanelContent,
@@ -45,20 +46,37 @@ import {
 import { SensorChart, TemperatureChart, type SensorPoint, type TemperaturePoint } from "./components/SensorChart";
 import type { InputBehaviour, InputBehaviourKind, InputButton } from "./types/microbit-connector";
 
-function getConnectErrorDescription(error: unknown): string {
+type ConnectionTransport = "usb" | "bluetooth";
+
+function getTransportLabel(transport: ConnectionTransport) {
+  return transport === "usb" ? "USB serial" : "Bluetooth";
+}
+
+function getConnectErrorDescription(error: unknown, transport: ConnectionTransport): string {
   const maybeDeviceError = error as { code?: string; message?: string };
   if (maybeDeviceError && typeof maybeDeviceError.message === "string") {
     if (maybeDeviceError.code === "unsupported") {
-      return "WebUSB is not supported in this browser. Use Chrome or Edge on localhost/HTTPS.";
+      return transport === "usb"
+        ? "WebUSB is not supported in this browser. Use Chrome or Edge on localhost/HTTPS."
+        : "Web Bluetooth is not supported in this browser. Use a browser with Web Bluetooth support on localhost/HTTPS.";
     }
     if (maybeDeviceError.code === "no-device-selected") {
-      return "You cancelled the USB device picker. Please select your micro:bit to connect.";
+      return `You cancelled the ${getTransportLabel(transport)} device picker. Please select your micro:bit to connect.`;
     }
     if (maybeDeviceError.code === "device-in-use") {
       return "The micro:bit is currently in use by another app/tab. Close the other connection and retry.";
     }
     if (maybeDeviceError.code === "permission-denied") {
-      return "USB permission was denied. Ensure this origin is allowed to access USB.";
+      return `${getTransportLabel(transport)} permission was denied. Ensure this origin is allowed to access ${getTransportLabel(transport)}.`;
+    }
+    if (maybeDeviceError.code === "disabled") {
+      return "Bluetooth is disabled. Enable Bluetooth in system settings and retry.";
+    }
+    if (maybeDeviceError.code === "location-disabled") {
+      return "Location services are disabled. Enable them and retry Bluetooth connection.";
+    }
+    if (maybeDeviceError.code === "pairing-information-lost") {
+      return "The micro:bit pairing information was lost. Pair the micro:bit again, then reconnect.";
     }
     if (maybeDeviceError.code === "connection-error" || maybeDeviceError.code === "device-disconnected") {
       return `${maybeDeviceError.message}. Try unplugging/replugging the micro:bit and retry.`;
@@ -178,23 +196,23 @@ function createSvgClickInput(mode: InfoPanelMode): InputBehaviour | null {
   const timestamp = Date.now();
 
   if (mode === "buttonA") {
-    return { button: "A", behaviour: "click", label: "Click", source: "action", timestamp };
+    return { button: "A", behaviour: "click", label: "Click on Website", source: "action", timestamp };
   }
 
   if (mode === "buttonB") {
-    return { button: "B", behaviour: "click", label: "Click", source: "action", timestamp };
+    return { button: "B", behaviour: "click", label: "Click on Website", source: "action", timestamp };
   }
 
   if (mode === "buttonAB") {
-    return { button: "AB", behaviour: "click", label: "Click", source: "action", timestamp };
+    return { button: "AB", behaviour: "click", label: "Click on Website", source: "action", timestamp };
   }
 
   if (mode === "logo") {
-    return { button: "Logo", behaviour: "click", label: "Click", source: "action", timestamp };
+    return { button: "Logo", behaviour: "click", label: "Click on Website", source: "action", timestamp };
   }
 
   if (mode === "microphone") {
-    return { button: "Microphone", behaviour: "click", label: "Click", source: "action", timestamp };
+    return { button: "Microphone", behaviour: "click", label: "Click on Website", source: "action", timestamp };
   }
 
   return null;
@@ -205,15 +223,40 @@ function isDisplayableInput(input: InputBehaviour) {
   return true;
 }
 
-const INPUT_IDLE_DELAY_MS = 2000;
+function getDynamicSensorMax(
+  data: SensorPoint[],
+  fallback: number,
+  minimum: number,
+  maximum: number,
+  margin = 1.2,
+): number {
+  if (data.length === 0) return fallback;
 
+  let observedMax = 0;
+  for (const point of data) {
+    const sampleMax = Math.max(Math.abs(point.x), Math.abs(point.y), Math.abs(point.z));
+    if (sampleMax > observedMax) observedMax = sampleMax;
+  }
+
+  if (!Number.isFinite(observedMax) || observedMax <= 0) {
+    return minimum;
+  }
+
+  const scaled = Math.ceil(observedMax * margin);
+  const clamped = Math.min(Math.max(scaled, minimum), maximum);
+  const step = 50;
+
+  return Math.ceil(clamped / step) * step;
+}
+
+const INPUT_IDLE_DELAY_MS = 2000;
 const actionDemoPrograms: DemoProgram[] = [
   {
     id: "default",
-    title: "Default all-input demo",
+    title: "Meet the micro:bit demo",
     description:
       "Single program for buttons, logo, gestures, microphone, accelerometer, magnetometer, and temperature.",
-    hexPath: "/usb-serial-demo.hex",
+    hexPath: "/microbit-Meet-the-microbit-for-microbit-V2.hex",
     supportedModes: ["default", "buttonA", "buttonB", "buttonAB", "logo", "microphone", "shake", "tiltLeft", "tiltRight", "tiltUp", "tiltDown", "faceUp", "faceDown", "freefall", "accel2g", "accel3g", "accel6g", "accel8g"],
   },
   {
@@ -253,38 +296,15 @@ const actionDemoPrograms: DemoProgram[] = [
   },
 ];
 
-function getDynamicSensorMax(
-  data: SensorPoint[],
-  fallback: number,
-  minimum: number,
-  maximum: number,
-  margin = 1.2,
-): number {
-  if (data.length === 0) return fallback;
-
-  let observedMax = 0;
-  for (const point of data) {
-    const sampleMax = Math.max(Math.abs(point.x), Math.abs(point.y), Math.abs(point.z));
-    if (sampleMax > observedMax) observedMax = sampleMax;
-  }
-
-  if (!Number.isFinite(observedMax) || observedMax <= 0) {
-    return minimum;
-  }
-
-  const scaled = Math.ceil(observedMax * margin);
-  const clamped = Math.min(Math.max(scaled, minimum), maximum);
-  const step = 50;
-
-  return Math.ceil(clamped / step) * step;
-}
-
 function App() {
-  const desktopSidebarWidth = "360px";
+  const desktopSidebarWidth = "480px";
   const navbarHeight = "72px";
   const toast = useToast();
   const microbitDrawing = useMemo(() => new MicrobitDrawing(), []);
-  const mbConnector = useMemo(() => new UsbSerialConnector(), []);
+  const usbConnector = useMemo(() => new UsbSerialConnector(), []);
+  const bluetoothConnector = useMemo(() => new BluetoothConnector(), []);
+  const [connectionTransport, setConnectionTransport] = useState<ConnectionTransport>("usb");
+  const mbConnector = connectionTransport === "usb" ? usbConnector : bluetoothConnector;
   const [mode, setMode] = useState<"landing" | "connected">("landing");
   const [isConnecting, setIsConnecting] = useState(false);
   const [isFlashing, setIsFlashing] = useState(false);
@@ -571,6 +591,11 @@ function App() {
         idleTimeoutRef.current = null;
       }
 
+      if (isActiveEnd(input.behaviour) && !isMicrophone) {
+        setLatestInputBehaviour(null);
+        return;
+      }
+
       if (shouldDisplay || isMicrophone) {
         setLatestInputBehaviour(input);
       }
@@ -673,12 +698,14 @@ function App() {
     }, INPUT_IDLE_DELAY_MS);
   }, [applyComponentVisual, openInfoPanel]);
 
-  const handleConnect = useCallback(() => {
+  const handleConnect = useCallback((transport: ConnectionTransport) => {
     if (isConnecting) return;
+    const connector = transport === "usb" ? usbConnector : bluetoothConnector;
+    setConnectionTransport(transport);
     setIsConnecting(true);
-    const connectPromise = mbConnector.handleConnect();
+    const connectPromise = connector.handleConnect();
     const toastId = toast({
-      title: "Connecting over USB...",
+      title: `Connecting over ${getTransportLabel(transport)}...`,
       status: "loading",
       isClosable: false,
       duration: null,
@@ -687,7 +714,7 @@ function App() {
     connectPromise
       .then(() => {
         toast.update(toastId, {
-          title: "Micro:bit USB serial is connected.",
+          title: `Micro:bit ${getTransportLabel(transport)} is connected.`,
           status: "success",
           duration: 2500,
           isClosable: true,
@@ -696,8 +723,8 @@ function App() {
       })
       .catch((error) => {
         toast.update(toastId, {
-          title: "Unable to connect to the micro:bit over USB.",
-          description: getConnectErrorDescription(error),
+          title: `Unable to connect to the micro:bit over ${getTransportLabel(transport)}.`,
+          description: getConnectErrorDescription(error, transport),
           status: "error",
           duration: 9000,
           isClosable: true,
@@ -705,14 +732,14 @@ function App() {
         setMode("landing");
       })
       .finally(() => setIsConnecting(false));
-  }, [mbConnector, isConnecting, toast]);
+  }, [bluetoothConnector, isConnecting, toast, usbConnector]);
 
   const handleFlashDemoHex = useCallback((demo: DemoProgram) => {
-    if (isFlashing) return;
+    if (isFlashing || connectionTransport !== "usb") return;
 
     setFlashingDemoId(demo.id);
     setIsFlashing(true);
-    const flashingPromise = mbConnector.flashHexFromUrl(demo.hexPath);
+    const flashingPromise = usbConnector.flashHexFromUrl(demo.hexPath);
 
     toast.promise(flashingPromise, {
       loading: { title: `Flashing ${demo.title}...` },
@@ -726,7 +753,7 @@ function App() {
         setIsFlashing(false);
         setFlashingDemoId(null);
       });
-  }, [mbConnector, isFlashing, toast]);
+  }, [connectionTransport, isFlashing, toast, usbConnector]);
 
   const demoProgramsForCurrentPanel = useMemo(
     () => getDemoProgramsForMode(actionDemoPrograms, infoPanelMode),
@@ -747,10 +774,16 @@ function App() {
       mode={infoPanelMode}
       currentDemo={currentDemoForPanel}
       restoreDemo={restoreDemoForPanel}
+      flashUnavailableReason={
+        connectionTransport === "bluetooth"
+          ? "Demo flashing is USB-only in this web app. Bluetooth stays connected to firmware already running on the micro:bit."
+          : undefined
+      }
       isFlashing={isFlashing}
       flashingDemoId={flashingDemoId}
-      onFlashDemo={handleFlashDemoHex}
+      onFlashDemo={connectionTransport === "usb" ? handleFlashDemoHex : undefined}
       isPanelLocked={isInfoPanelLocked}
+      onReturnHome={() => setInfoPanelModeWithLock("default", true)}
       onTogglePanelLock={() => setIsInfoPanelLocked((value) => !value)}
     />
   );
@@ -811,7 +844,7 @@ function App() {
               gap={2}
             >
               <CheckCircleIcon />
-              Connected
+              {getTransportLabel(connectionTransport)} connected
             </Badge>
           )}
         </HStack>
@@ -850,8 +883,8 @@ function App() {
               <CardHeader textAlign="center">
                 <Heading size="lg">Connect Your Microbit</Heading>
                 <Text mt={2} color="gray.600">
-                  Bring a Micro:bit to life with a dummy connector that simulates real events before
-                  you have the hardware in hand.
+                  Connect over USB to flash demos, or connect over Bluetooth to mirror firmware already
+                  running on the micro:bit.
                 </Text>
               </CardHeader>
               <CardBody>
@@ -864,16 +897,29 @@ function App() {
                   />
                 </Stack>
               </CardBody>
-              <CardFooter justify="center">
+              <CardFooter justify="center" gap={3} flexWrap="wrap">
                 <Button
                   colorScheme="teal"
                   onClick={() => {
                     setInfoPanelModeWithLock("default", true);
-                    handleConnect();
+                    handleConnect("usb");
                   }}
-                  isLoading={isConnecting}
+                  isLoading={isConnecting && connectionTransport === "usb"}
+                  isDisabled={isConnecting}
                 >
-                  Connect
+                  Connect USB
+                </Button>
+                <Button
+                  colorScheme="blue"
+                  variant="outline"
+                  onClick={() => {
+                    setInfoPanelModeWithLock("default", true);
+                    handleConnect("bluetooth");
+                  }}
+                  isLoading={isConnecting && connectionTransport === "bluetooth"}
+                  isDisabled={isConnecting}
+                >
+                  Connect Bluetooth
                 </Button>
               </CardFooter>
             </Card>
@@ -1025,7 +1071,11 @@ function App() {
                     <SensorChart
                       data={magnetometerData}
                       title="Magnetometer"
-                      maxVal={getDynamicSensorMax(magnetometerData, 3000, 200, 5000)}
+                      maxVal={
+                        connectionTransport === "usb"
+                          ? getDynamicSensorMax(magnetometerData, 3000, 200, 5000)
+                          : 50000
+                      }
                     />
                   </Box>
                   <Box
