@@ -1,5 +1,5 @@
-import { ExternalLinkIcon, LockIcon, RepeatIcon, UnlockIcon } from "@chakra-ui/icons";
-import { Box, Button, Divider, Flex, Heading, IconButton, Stack, Text } from "@chakra-ui/react";
+import { ChevronDownIcon, ChevronUpIcon, ExternalLinkIcon, LockIcon, RepeatIcon, UnlockIcon } from "@chakra-ui/icons";
+import { Box, Button, Collapse, Divider, Flex, Heading, IconButton, Stack, Text } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 
 export type InfoPanelMode =
@@ -188,10 +188,25 @@ function getMiniPreview(mode: InfoPanelMode): MiniPreview {
   }
 
   return {
-    frames: [[1, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 22]],
-    accent: "#ef4444",
-    glow: "rgba(239, 68, 68, 0.45)",
+    frames: [[6, 8, 15, 19, 21, 22, 23]],
+    accent: "#f59e0b",
+    glow: "rgba(245, 158, 11, 0.45)",
   };
+}
+
+function getWikiEmbedUrl(wikiUrl: string) {
+  try {
+    const url = new URL(wikiUrl);
+
+    if (url.hostname === "makecode.microbit.org") {
+      const docPath = url.pathname.replace(/\/$/, "");
+      return `https://makecode.microbit.org/---docs#doc:${docPath}:blocks:live-en`;
+    }
+  } catch {
+    return wikiUrl;
+  }
+
+  return wikiUrl;
 }
 
 const infoPanels: Record<InfoPanelMode, InfoPanelData> = {
@@ -295,10 +310,12 @@ interface InfoPanelContentProps {
   mode: InfoPanelMode;
   currentDemo?: DemoProgram;
   restoreDemo?: DemoProgram;
+  flashUnavailableReason?: string;
   isFlashing?: boolean;
   flashingDemoId?: string | null;
   onFlashDemo?: (demo: DemoProgram) => void;
   isPanelLocked?: boolean;
+  onReturnHome?: () => void;
   onTogglePanelLock?: () => void;
 }
 
@@ -306,15 +323,19 @@ export function InfoPanelContent({
   mode,
   currentDemo,
   restoreDemo,
+  flashUnavailableReason,
   isFlashing = false,
   flashingDemoId = null,
   onFlashDemo,
   isPanelLocked = false,
+  onReturnHome,
   onTogglePanelLock,
 }: InfoPanelContentProps) {
   const panel = infoPanels[mode];
   const miniPreview = getMiniPreview(mode);
   const [frameIndex, setFrameIndex] = useState(0);
+  const [isWikiOpen, setIsWikiOpen] = useState(false);
+  const wikiEmbedUrl = getWikiEmbedUrl(panel.wikiUrl);
 
   useEffect(() => {
     setFrameIndex(0);
@@ -333,21 +354,52 @@ export function InfoPanelContent({
   }, [miniPreview.frames.length, mode]);
 
   const activeCells = miniPreview.frames[frameIndex % miniPreview.frames.length];
+  const canFlash = onFlashDemo !== undefined && flashUnavailableReason === undefined;
 
   return (
     <Stack spacing={5} px={5} py={5}>
       <Box>
         <Flex align="center" justify="space-between" gap={3} mb={3}>
           <Heading size="lg">{panel.title}</Heading>
-          <IconButton
-            aria-label={isPanelLocked ? "Unlock panel" : "Lock panel"}
-            icon={isPanelLocked ? <UnlockIcon /> : <LockIcon />}
-            size="sm"
-            variant={isPanelLocked ? "solid" : "outline"}
-            colorScheme={isPanelLocked ? "blue" : "gray"}
-            onClick={onTogglePanelLock}
-            flexShrink={0}
-          />
+          <Flex gap={2} flexShrink={0}>
+            <IconButton
+              aria-label="Return to Digital Twin"
+              icon={
+                <Box
+                  as="span"
+                  aria-hidden="true"
+                  display="block"
+                  w="14px"
+                  h="14px"
+                  position="relative"
+                  sx={{
+                    "&::before": {
+                      content: '""',
+                      position: "absolute",
+                      left: "1px",
+                      top: "0px",
+                      width: "12px",
+                      height: "12px",
+                      background: "currentColor",
+                      clipPath: "polygon(50% 0%, 100% 42%, 100% 100%, 64% 100%, 64% 62%, 36% 62%, 36% 100%, 0% 100%, 0% 42%)",
+                    },
+                  }}
+                />
+              }
+              size="sm"
+              variant="outline"
+              colorScheme="gray"
+              onClick={onReturnHome}
+            />
+            <IconButton
+              aria-label={isPanelLocked ? "Unlock panel" : "Lock panel"}
+              icon={isPanelLocked ? <UnlockIcon /> : <LockIcon />}
+              size="sm"
+              variant={isPanelLocked ? "solid" : "outline"}
+              colorScheme={isPanelLocked ? "blue" : "gray"}
+              onClick={onTogglePanelLock}
+            />
+          </Flex>
         </Flex>
       </Box>
 
@@ -364,7 +416,7 @@ export function InfoPanelContent({
               size="md"
               colorScheme="blue"
               isLoading={isFlashing && flashingDemoId === currentDemo.id}
-              isDisabled={isFlashing}
+              isDisabled={isFlashing || !canFlash}
               onClick={() => onFlashDemo?.(currentDemo)}
               flex={1}
             >
@@ -377,7 +429,7 @@ export function InfoPanelContent({
                 colorScheme="gray"
                 leftIcon={<RepeatIcon />}
                 isLoading={isFlashing && flashingDemoId === restoreDemo.id}
-                isDisabled={isFlashing}
+                isDisabled={isFlashing || !canFlash}
                 onClick={() => onFlashDemo?.(restoreDemo)}
                 flex={1}
               >
@@ -385,6 +437,11 @@ export function InfoPanelContent({
               </Button>
             )}
           </Stack>
+          {flashUnavailableReason && (
+            <Text color="gray.600" fontSize="sm" mb={3}>
+              {flashUnavailableReason}
+            </Text>
+          )}
           <Box
             bg="linear-gradient(145deg, #101827, #1f2937)"
             borderRadius="8px"
@@ -437,6 +494,37 @@ export function InfoPanelContent({
       <Box>
         <Divider mb={4} />
         <Button
+          type="button"
+          variant="outline"
+          colorScheme="blue"
+          rightIcon={isWikiOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+          justifyContent="space-between"
+          w="100%"
+          onClick={() => setIsWikiOpen((value) => !value)}
+        >
+          Wiki
+        </Button>
+        <Collapse in={isWikiOpen} animateOpacity>
+          <Box
+            mt={3}
+            border="1px solid"
+            borderColor="gray.200"
+            borderRadius="8px"
+            overflow="hidden"
+            bg="white"
+          >
+            <Box
+              as="iframe"
+              title={`${panel.title} wiki`}
+              src={wikiEmbedUrl}
+              w="100%"
+              h={{ base: "520px", md: "620px" }}
+              border={0}
+              display="block"
+            />
+          </Box>
+        </Collapse>
+        <Button
           as="a"
           href={panel.wikiUrl}
           target="_blank"
@@ -446,6 +534,7 @@ export function InfoPanelContent({
           rightIcon={<ExternalLinkIcon />}
           justifyContent="space-between"
           w="100%"
+          mt={2}
         >
           Open wiki
         </Button>

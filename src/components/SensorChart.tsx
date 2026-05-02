@@ -122,7 +122,7 @@ export function SensorChart({ data, title, maxVal, showLegend = true }: SensorCh
         .attr("stroke-width", 2)
         .attr("d", line(item.key));
     }
-  }, [chartWidth, clipId, data]);
+  }, [chartWidth, clipId, data, maxVal, title]);
 
   const legendItems = [
     { label: "X", color: "#E53E3E" },
