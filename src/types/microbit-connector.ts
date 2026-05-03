@@ -12,20 +12,13 @@ export type InputBehaviourKind =
     | "longPress"
     | "on"
     | "off"
-    | "loud"
-    | "quiet"
     | "tiltUp"
     | "tiltDown"
     | "tiltLeft"
     | "tiltRight"
     | "faceUp"
     | "faceDown"
-    | "freefall"
-    | "shake"
-    | "acceleration2g"
-    | "acceleration3g"
-    | "acceleration6g"
-    | "acceleration8g";
+    | "freefall";
 
 export type InputBehaviour = {
     button: InputButton;

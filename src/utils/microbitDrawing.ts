@@ -9,12 +9,12 @@ export class MicrobitDrawing {
   private _cachedTemplateSetLed: HTMLElement | null;
   private _cachedTouchLogo: HTMLElement | null;
 
-  private _buttonA: Boolean = false;
-  private _buttonB: Boolean = false;
-  private _leds: Array<Boolean> = new Array<false>(MicrobitConstants.leds.total);
-  private _microphone: Boolean = false;
-  private _templateLed: Boolean = false;
-  private _touchLogo: Boolean = false;
+  private _buttonA: boolean = false;
+  private _buttonB: boolean = false;
+  private _leds: Array<boolean> = new Array<false>(MicrobitConstants.leds.total);
+  private _microphone: boolean = false;
+  private _templateLed: boolean = false;
+  private _touchLogo: boolean = false;
 
   constructor() {
     this._cachedButtonA = document.querySelector(SvgSettings.selectors.buttonA);
@@ -99,7 +99,7 @@ export class MicrobitDrawing {
     buttonBCircle.style.fill = color;
   }
 
-  private setLedTo(id: number, val: Boolean) {
+  private setLedTo(id: number, val: boolean) {
     if (id < 0 || id >= MicrobitConstants.leds.total)
       return;
 
@@ -111,13 +111,13 @@ export class MicrobitDrawing {
     else currentLed.style.display = "none";
   }
 
-  private setMicrphoneTo(val: Boolean) {
+  private setMicrphoneTo(val: boolean) {
     this._microphone = val;
     if (val) this.getSetMicrphoneEl().style.display = "block";
     else this.getSetMicrphoneEl().style.display = "none";
   }
 
-  private setTemplateTo(val: Boolean) {
+  private setTemplateTo(val: boolean) {
     this._templateLed = val;
     if (val) this.getTemplateSetLedEl().style.display = "block";
     else this.getTemplateSetLedEl().style.display = "none";
@@ -130,20 +130,20 @@ export class MicrobitDrawing {
     touchLogoInner.style.fill = color;
   }
 
-  public get buttonA(): Boolean {
+  public get buttonA(): boolean {
     return this._buttonA;
   }
 
-  public set buttonA(val: Boolean) {
+  public set buttonA(val: boolean) {
     this._buttonA = val;
     this.fillButtonA(val ? SvgSettings.colors.buttonAActive : SvgSettings.colors.buttonAInative);
   }
 
-  public get buttonB(): Boolean {
+  public get buttonB(): boolean {
     return this._buttonB;
   }
 
-  public set buttonB(val: Boolean) {
+  public set buttonB(val: boolean) {
     this._buttonB = val;
     this.fillButtonB(val ? SvgSettings.colors.buttonBActive : SvgSettings.colors.buttonBInative);
   }
@@ -164,27 +164,27 @@ export class MicrobitDrawing {
     return this._leds[id];
   }
 
-  public get microphone(): Boolean {
+  public get microphone(): boolean {
     return this._microphone;
   }
 
-  public set microphone(val: Boolean) {
+  public set microphone(val: boolean) {
     this.setMicrphoneTo(val);
   }
 
-  public get templateLed(): Boolean {
+  public get templateLed(): boolean {
     return this._templateLed;
   }
 
-  public set templateLed(val: Boolean) {
+  public set templateLed(val: boolean) {
     this.setTemplateTo(val);
   }
 
-  public get touchLogo(): Boolean {
+  public get touchLogo(): boolean {
     return this._touchLogo;
   }
 
-  public set touchLogo(val: Boolean) {
+  public set touchLogo(val: boolean) {
     this._touchLogo = val;
     this.fillTouchLogo(val ? SvgSettings.colors.touchLogoActive : SvgSettings.colors.touchLogoInactive);
   }

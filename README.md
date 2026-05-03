@@ -1,72 +1,33 @@
 # micro:bit Digital Twin
 
-A React + Vite app for connecting to a BBC micro:bit over WebUSB serial or Bluetooth, mirroring the board in the browser, and flashing bundled demo programs directly from the UI over USB.
+A React and Vite web app that visualises a connected BBC micro:bit as a digital twin. The app connects to a micro:bit over Web Bluetooth, mirrors live board state, and shows input, gesture, microphone, LED, and sensor activity in the browser.
 
-The current version is centered on a guided demo workflow:
+## Features
 
-- connect to a micro:bit over USB or Bluetooth
-- flash a default all-input demo or a feature-specific demo
-- watch the SVG board react to button, logo, gesture, and microphone events
-- inspect accelerometer, magnetometer, and temperature data over time
-- use the right panel to load demos, preview their behavior, and lock the current panel
-
-## Current Features
-
-- WebUSB serial connection through the browser
-- Web Bluetooth connection for firmware that already includes the required Bluetooth services
-- In-browser flashing of bundled `.hex` demo programs
-- Live SVG micro:bit twin with clickable Button A, Button B, logo, and microphone regions
-- Event detection for:
-  - Button A, Button B, and A+B
-  - Logo touch / click / short press / long press
-  - Loud / quiet microphone events
+- Connect to a micro:bit using `@microbit/microbit-connection`
+- Flash the demo firmware from the browser over USB
+- Show a live SVG micro:bit with button, logo, microphone, and LED state
+- Detect detailed input behaviours:
+  - Button A, Button B, and A+B events
+  - Logo touch events
+  - Pressed, released, click, long click, hold, double click, short press, and long press
+- Detect microphone sound events:
+  - Loud
+  - Quiet
+- Detect gesture events:
   - Tilt up, tilt down, tilt left, tilt right
   - Face up, face down
-  - Freefall, shake, and 2g / 3g / 6g / 8g impact gestures
-- Live charts for:
-  - Accelerometer
-  - Magnetometer
-  - Temperature
-- Right-side info panel with:
-  - `Load` and `Restore`
-  - animated 5x5 preview of the selected demo
-  - lock / unlock control to freeze the current panel
-  - direct MakeCode wiki link for the selected feature
-
-## Demo Programs
-
-The app ships with a default demo plus a smaller set of focused interactive demos:
-
-- `microbit-Meet-the-microbit-for-microbit-V2.hex`
-  The default demo program loaded from the main panel. This build includes the detection and LED matrix telemetry used by the website.
-
-- `usb-serial-demo.hex`
-  The generated all-in-one demo. Emits buttons, logo, gestures, microphone, accelerometer, magnetometer, and temperature.
-
-- `usb-serial-demo-simple-buttons.hex`
-  Button demo where A moves a cross left, B moves it right, and A+B recenters it.
-
-- `usb-serial-demo-simple-tilt.hex`
-  Tilt demo with a moving dot for up, down, left, and right.
-
-- `usb-serial-demo-simple-logo.hex`
-  Logo demo with icon and number behavior.
-
-- `usb-serial-demo-simple-microphone.hex`
-  Microphone demo with sound-level bar behavior.
-
-- `usb-serial-demo-simple-shake-impact.hex`
-  Shake / freefall / impact demo with sparkle feedback.
-
-Older per-action demo files are still present in `public/` and can be regenerated alongside the current demo set.
+  - Freefall
+  - Shake
+- Plot accelerometer and magnetometer readings
+- Open contextual MakeCode reference panels from detected events or by clicking parts of the micro:bit drawing
 
 ## Requirements
 
 - Node.js and npm
-- Chrome or Edge with WebUSB support
-- Browser support for Web Bluetooth if using Bluetooth mode
-- BBC micro:bit V2 for logo touch and microphone features
-- local development over `localhost`
+- A browser with Web Bluetooth support, such as Chrome or Edge
+- A BBC micro:bit V2 for logo touch and microphone features
+- HTTPS or localhost. Web Bluetooth works on `localhost` during development.
 
 ## Getting Started
 
@@ -76,60 +37,76 @@ Install dependencies:
 npm install
 ```
 
-Start the dev server:
+Start the development server:
 
 ```bash
 npm run dev -- --host 127.0.0.1
 ```
 
-Open:
+Open the local URL printed by Vite, usually:
 
 ```text
 http://127.0.0.1:5173/
 ```
 
-## Firmware Generation
+## Demo Firmware
 
-The generated demo sources and firmware live in `public/`.
+Use the **Flash Demo** button in the app to flash the bundled demo hex to a micro:bit over USB. The running micro:bit program must raise the expected events for the browser to receive them.
 
-Scripts:
+The app fetches the firmware from:
 
-```bash
-node scripts/build-default-demo.cjs
-node scripts/build-simple-interaction-demos.cjs
+```text
+public/Meet-the-microbit-for-microbit-V2.hex
 ```
 
-These scripts write both `.hex` outputs and matching `.makecode.txt` source snapshots.
+## Event Handling
 
-## Main App Structure
+The Bluetooth connector is implemented in:
 
-- `src/App.tsx`
-  Main UI, USB connection flow, panel routing, input state, and chart layout.
+```text
+src/connectors/bluetooth-connector.ts
+```
 
-- `src/components/InfoPanels.tsx`
-  Right-side feature panel, animated demo previews, wiki links, and panel lock UI.
+The shared connector contract is in:
 
-- `src/components/SensorChart.tsx`
-  Accelerometer, magnetometer, and temperature chart rendering.
+```text
+src/types/microbit-connector.ts
+```
 
-- `src/connectors/usb-serial-connector.ts`
-  WebUSB serial connector used for live data, serial messages, and demo flashing.
+The main UI registers event handlers in:
 
-- `src/connectors/bluetooth-connector.ts`
-  Web Bluetooth connector used for live data from firmware that exposes the required BLE services.
+```text
+src/App.tsx
+```
 
-- `scripts/build-default-demo.cjs`
-  Generates the default all-input demo firmware.
+The latest input display separates each detection into two parts:
 
-- `scripts/build-simple-interaction-demos.cjs`
-  Generates the focused demo firmware set.
+- **Component**: the source, such as Button A, Logo, Microphone, or Gesture
+- **Event**: the behaviour, such as Pressed, Hold, Loud, or Tilt left
 
-## Notes
+## Useful Scripts
 
-- USB serial is the primary connection path and the only web flashing path.
-- Bluetooth mode is read-only from the app's perspective: it mirrors firmware already running on the micro:bit.
-- Sending programs over Bluetooth reboots the micro:bit application processor, which drops the Bluetooth connection. The app therefore keeps demo flashing USB-only.
-- The default `microbit-Meet-the-microbit-for-microbit-V2.hex` program is expected to stream LED matrix telemetry over USB serial so the website can mirror the 5x5 grid.
-- The right panel changes with detected input unless it is locked.
-- Microphone focus is intentionally lower priority than direct physical inputs.
-- The live status card returns to idle after a short pause.
+Run a production build:
+
+```bash
+npm run build
+```
+
+Run ESLint:
+
+```bash
+npm run lint
+```
+
+Preview the production build:
+
+```bash
+npm run preview
+```
+
+## Current Notes
+
+- `npm run build` should pass.
+- `npm run lint` currently reports pre-existing issues in parts of the codebase that are not required to run the app.
+- Web Bluetooth device selection requires a direct user gesture, so connect/flash flows must be started from browser button clicks.
+- Microphone and logo events require micro:bit V2 hardware.

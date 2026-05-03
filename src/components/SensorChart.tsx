@@ -11,7 +11,7 @@ export type SensorPoint = {
 
 export type TemperaturePoint = {
   time: number;
-  value: number;
+  temp: number;
 };
 
 type SensorChartProps = {
@@ -24,6 +24,7 @@ type SensorChartProps = {
 type TemperatureChartProps = {
   data: TemperaturePoint[];
   title: string;
+  showLegend?: boolean;
 };
 
 export function SensorChart({ data, title, maxVal, showLegend = true }: SensorChartProps) {
@@ -57,7 +58,6 @@ export function SensorChart({ data, title, maxVal, showLegend = true }: SensorCh
     svg.attr("width", chartWidth).attr("height", height).attr("viewBox", `0 0 ${chartWidth} ${height}`);
 
     if (data.length === 0) {
-      const normalizedTitle = title.toLowerCase();
       svg
         .append("text")
         .attr("x", chartWidth / 2)
@@ -65,7 +65,7 @@ export function SensorChart({ data, title, maxVal, showLegend = true }: SensorCh
         .attr("text-anchor", "middle")
         .attr("fill", "#718096")
         .style("font-size", "13px")
-        .text(`Waiting for ${normalizedTitle} samples...`);
+        .text(`Waiting for ${title.toLowerCase()} samples...`);
       return;
     }
 
@@ -77,6 +77,23 @@ export function SensorChart({ data, title, maxVal, showLegend = true }: SensorCh
       .range([margin.left, margin.left + innerWidth]);
 
     const yScale = d3.scaleLinear().domain([-maxVal, maxVal]).range([margin.top + innerHeight, margin.top]);
+
+    const xAxis = d3.axisBottom(xScale).ticks(0).tickSize(0);
+    const yAxis = d3.axisLeft(yScale).ticks(0).tickSize(0);
+
+    svg
+      .append("g")
+      .attr("transform", `translate(0, ${margin.top + innerHeight})`)
+      .call(xAxis)
+      .call((g) => g.selectAll("path,line").attr("stroke", "#CBD5E0"))
+      .call((g) => g.selectAll("text").remove());
+
+    svg
+      .append("g")
+      .attr("transform", `translate(${margin.left}, 0)`)
+      .call(yAxis)
+      .call((g) => g.selectAll("path,line").attr("stroke", "#CBD5E0"))
+      .call((g) => g.selectAll("text").remove());
 
     const line = (key: "x" | "y" | "z") =>
       d3
@@ -132,7 +149,7 @@ export function SensorChart({ data, title, maxVal, showLegend = true }: SensorCh
 
   return (
     <Box ref={containerRef} w="100%">
-      <Flex justify="space-between" align="center" gap={3} mb={3} minH="32px" flexWrap="wrap">
+      <Flex justify="space-between" align="center" gap={3} mb={3} flexWrap="wrap">
         <Heading size="sm" color="gray.700">
           {title}
         </Heading>
@@ -164,6 +181,7 @@ export function SensorChart({ data, title, maxVal, showLegend = true }: SensorCh
     </Box>
   );
 }
+
 
 export function TemperatureChart({ data, title }: TemperatureChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -209,7 +227,7 @@ export function TemperatureChart({ data, title }: TemperatureChartProps) {
 
     const maxTime = data[data.length - 1]?.time ?? Date.now();
     const minTime = Math.max(data[0]?.time ?? maxTime, maxTime - 30_000);
-    const values = data.map((point) => point.value).filter(Number.isFinite);
+    const values = data.map((point) => point.temp).filter(Number.isFinite);
     const observedMin = d3.min(values) ?? 0;
     const observedMax = d3.max(values) ?? observedMin;
     const padding = Math.max((observedMax - observedMin) * 0.25, 2);
@@ -239,7 +257,7 @@ export function TemperatureChart({ data, title }: TemperatureChartProps) {
     const line = d3
       .line<TemperaturePoint>()
       .x((d) => xScale(d.time))
-      .y((d) => yScale(d.value))
+      .y((d) => yScale(d.temp))
       .curve(d3.curveMonotoneX);
 
     svg
@@ -253,7 +271,7 @@ export function TemperatureChart({ data, title }: TemperatureChartProps) {
       .attr("d", line);
   }, [chartWidth, clipId, data]);
 
-  const latest = data[data.length - 1]?.value;
+  const latest = data[data.length - 1]?.temp;
 
   return (
     <Box ref={containerRef} w="100%">
