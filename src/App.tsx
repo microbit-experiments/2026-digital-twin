@@ -102,6 +102,7 @@ function App() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isMicrobitShaking, setIsMicrobitShaking] = useState(false);
   const [infoPanelMode, setInfoPanelMode] = useState<InfoPanelMode>("default");
+  const [lockInfoPanel, setLockInfoPanel] = useState<boolean>(false);
   const [latestInputBehaviour, setLatestInputBehaviour] = useState<InputBehaviour | null>(null);
   const [accelerometerData, setAccelerometerData] = useState<SensorPoint[]>([]);
   const [magnetometerData, setMagnetometerData] = useState<SensorPoint[]>([]);
@@ -118,6 +119,11 @@ function App() {
     lg: "460px",
     xl: "540px",
   });
+
+  const setInfoPanelModeHelper = (mode: InfoPanelMode) => {
+    console.log(mode, lockInfoPanel)
+    if (!lockInfoPanel) setInfoPanelMode(mode)
+  }
 
   const triggerMicrobitShake = useCallback(() => {
     if (shakeTimeoutRef.current !== null) {
@@ -234,14 +240,14 @@ function App() {
 
     mbConnector.setOnButtonADown(() => {
       microbitDrawing.buttonA = true;
-      setInfoPanelMode("buttonA");
+      setInfoPanelModeHelper("buttonA");
     });
     mbConnector.setOnButtonAUp(() => {
       microbitDrawing.buttonA = false;
     });
     mbConnector.setOnButtonBDown(() => {
       microbitDrawing.buttonB = true;
-      setInfoPanelMode("buttonB");
+      setInfoPanelModeHelper("buttonB");
     });
     mbConnector.setOnButtonBUp(() => {
       microbitDrawing.buttonB = false;
@@ -282,20 +288,21 @@ function App() {
       console.log("Input behaviour: ", `${formatInputButton(input.button)} ${input.label}`);
 
       if (shouldDisplay || isActiveStart(input.behaviour)) {
-        if (input.button === "A") setInfoPanelMode("buttonA");
-        if (input.button === "B") setInfoPanelMode("buttonB");
-        if (input.button === "Logo") setInfoPanelMode("logo");
+        console.log()
+        if (input.button === "A") setInfoPanelModeHelper("buttonA");
+        if (input.button === "B") setInfoPanelModeHelper("buttonB");
+        if (input.button === "Logo") setInfoPanelModeHelper("logo");
       }
     });
     mbConnector.setOnLogoDown(() => {
       microbitDrawing.touchLogo = true;
-      setInfoPanelMode("logo");
+      setInfoPanelModeHelper("logo");
     });
     mbConnector.setOnLogoUp(() => {
       microbitDrawing.touchLogo = false;
     });
     mbConnector.setOnShake(() => {
-      setInfoPanelMode("shake");
+      setInfoPanelModeHelper("shake");
       triggerMicrobitShake();
     });
 
@@ -334,12 +341,16 @@ function App() {
         return next.slice(-150);
       });
     });
-  }, [mbConnector, microbitDrawing, triggerMicrobitShake]);
+  }, [mbConnector, microbitDrawing, triggerMicrobitShake, lockInfoPanel]);
 
-  const infoPanelBody = <InfoPanelContent mode={infoPanelMode} />;
+  const lockInfoPanelHandler = () => {
+    console.log(lockInfoPanel, !lockInfoPanel);
+    setLockInfoPanel(!lockInfoPanel);
+  }
+  const infoPanelBody = <InfoPanelContent mode={infoPanelMode} locked={lockInfoPanel} lockHandler={lockInfoPanelHandler} />;
 
   const openInfoPanel = useCallback((nextMode: InfoPanelMode) => {
-    setInfoPanelMode(nextMode);
+    setInfoPanelModeHelper(nextMode);
     if (!isLargeScreen) {
       infoDisclosure.onOpen();
     }
@@ -471,6 +482,7 @@ function App() {
           colorScheme="teal"
           variant="solid"
           boxShadow="sm"
+          size={{ base: "sm", md: "md" }}
           onClick={handleFlashDemo}
         >
           Flash Demo

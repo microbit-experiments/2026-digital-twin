@@ -1,5 +1,6 @@
-import { ExternalLinkIcon } from "@chakra-ui/icons";
-import { Box, Button, Divider, Heading, Stack, Text } from "@chakra-ui/react";
+import { ExternalLinkIcon, LockIcon, UnlockIcon } from "@chakra-ui/icons";
+import { Box, Button, Divider, Flex, Heading, IconButton, Stack, Text } from "@chakra-ui/react";
+import { useEffect, useState } from "react";
 
 export type InfoPanelMode = "default" | "buttonA" | "buttonB" | "logo" | "microphone" | "shake";
 
@@ -106,15 +107,24 @@ function MakeCodeReferenceFrame({ panel }: { panel: InfoPanelData }) {
   );
 }
 
-export function InfoPanelContent({ mode }: { mode: InfoPanelMode }) {
+export function InfoPanelContent({ mode, locked, lockHandler }: { mode: InfoPanelMode, locked: boolean, lockHandler: () => void }) {
   const panel = infoPanels[mode];
 
   return (
-    <Stack spacing={5} px={6} py={6}>
-      <Box>
-        <Heading size="md" mb={2}>
-          {panel.title}
-        </Heading>
+    <Stack spacing={5} px={{ base: 0, md: 6 }} py={{ base: 0, md: 4 }}>
+      <Box display={{ base: "none", md: "block" }}>
+        <Flex alignItems="center" justifyContent="space-between" p={4} borderWidth="1px">
+          <Heading size="md">
+            {panel.title}
+          </Heading>
+          <IconButton
+            aria-label='Search database'
+            icon={locked ? <LockIcon /> : <UnlockIcon />}
+            size={"sm"}
+            colorScheme={locked ? "red" : "gray"}
+            onMouseDown={lockHandler}
+          />
+        </Flex>
         <Divider />
       </Box>
 
