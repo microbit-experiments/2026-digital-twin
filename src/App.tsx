@@ -39,12 +39,12 @@ import { BlueToothConnector } from "./connectors/bluetooth-connector";
 import { createUSBConnection } from "@microbit/microbit-connection/usb";
 import { createUniversalHexFlashDataSource } from "@microbit/microbit-connection/universal-hex";
 import {
-  getInfoPanelTitle,
   InfoPanelContent,
-  type InfoPanelMode,
 } from "./components/InfoPanels";
 import { SensorChart, TemperatureChart, type SensorPoint, type TemperaturePoint } from "./components/SensorChart";
 import type { InputBehaviour, InputBehaviourKind, InputButton } from "./types/microbit-connector";
+import type { InfoPanelMode } from "./types/info-panel";
+import { getInfoPanelTitle } from "./utils/info-panel";
 
 function formatInputButton(button: InputButton) {
   if (button === "Logo") return "Logo";
@@ -120,10 +120,10 @@ function App() {
     xl: "540px",
   });
 
-  const setInfoPanelModeHelper = (mode: InfoPanelMode) => {
+  const setInfoPanelModeHelper = useCallback((mode: InfoPanelMode) => {
     console.log(mode, lockInfoPanel)
     if (!lockInfoPanel) setInfoPanelMode(mode)
-  }
+  }, [lockInfoPanel]);
 
   const triggerMicrobitShake = useCallback(() => {
     if (shakeTimeoutRef.current !== null) {
@@ -341,7 +341,7 @@ function App() {
         return next.slice(-150);
       });
     });
-  }, [mbConnector, microbitDrawing, triggerMicrobitShake, lockInfoPanel]);
+  }, [mbConnector, microbitDrawing, triggerMicrobitShake, setInfoPanelModeHelper]);
 
   const lockInfoPanelHandler = () => {
     console.log(lockInfoPanel, !lockInfoPanel);
@@ -354,7 +354,7 @@ function App() {
     if (!isLargeScreen) {
       infoDisclosure.onOpen();
     }
-  }, [infoDisclosure, isLargeScreen]);
+  }, [infoDisclosure, isLargeScreen, setInfoPanelModeHelper]);
 
   const handleMicrobitDrawingClick = useCallback((event: MouseEvent<HTMLDivElement>) => {
     const nextMode = findMicrobitSvgPart(event.target);
