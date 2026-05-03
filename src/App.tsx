@@ -43,7 +43,7 @@ import {
   InfoPanelContent,
   type InfoPanelMode,
 } from "./components/InfoPanels";
-import { SensorChart, type SensorPoint } from "./components/SensorChart";
+import { SensorChart, TemperatureChart, type SensorPoint, type TemperaturePoint } from "./components/SensorChart";
 import type { InputBehaviour, InputBehaviourKind, InputButton } from "./types/microbit-connector";
 
 function formatInputButton(button: InputButton) {
@@ -105,6 +105,7 @@ function App() {
   const [latestInputBehaviour, setLatestInputBehaviour] = useState<InputBehaviour | null>(null);
   const [accelerometerData, setAccelerometerData] = useState<SensorPoint[]>([]);
   const [magnetometerData, setMagnetometerData] = useState<SensorPoint[]>([]);
+  const [temperatureData, setTemperatureData] = useState<TemperaturePoint[]>([]);
   const shakeTimeoutRef = useRef<number | null>(null);
   const idleTimeoutRef = useRef<number | null>(null);
   const activeInputsRef = useRef(new Set<InputButton>());
@@ -160,10 +161,6 @@ function App() {
     };
 
     // TODO Replace placeholder handlers
-    mbConnector.setTemperatureUpdate((x) => {
-      console.log("Temperature: ", x);
-    });
-
     mbConnector.setOnTiltUp(() => {
       console.log("tiltUp");
       showGestureInput("tiltUp", "Tilt up");
@@ -326,6 +323,14 @@ function App() {
     mbConnector.setMagnetometerUpdate((x, y, z) => {
       setMagnetometerData((previous) => {
         const next = [...previous, { time: Date.now(), x, y, z }];
+        return next.slice(-150);
+      });
+    });
+
+    mbConnector.setTemperatureUpdate((temp) => {
+      console.log("Temperature: ", temp);
+      setTemperatureData((previous) => {
+        const next = [...previous, { time: Date.now(), temp }];
         return next.slice(-150);
       });
     });
@@ -638,18 +643,18 @@ function App() {
                         flexShrink={0}
                       />
                       <Box minW={0} flex={1}>
-                      <Text color="gray.500" fontSize="sm">
+                        <Text color="gray.500" fontSize="sm">
                           Event
-                      </Text>
+                        </Text>
                         <Text color={currentInputDisplay.isIdle ? "gray.700" : "blue.800"} fontWeight="bold" fontSize={{ base: "xl", md: "2xl" }}>
                           {currentInputDisplay.event}
-                      </Text>
-                    </Box>
+                        </Text>
+                      </Box>
                     </HStack>
                   </HStack>
                 </Box>
 
-                <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
+                <SimpleGrid columns={{ base: 1, lg: 3 }} spacing={6}>
                   <Box
                     bg="white"
                     border="1px solid"
@@ -679,6 +684,21 @@ function App() {
                       data={magnetometerData}
                       title="Magnetometer"
                       maxVal={50000}
+                    />
+                  </Box>
+
+                  <Box
+                    bg="white"
+                    border="1px solid"
+                    borderColor="gray.200"
+                    borderRadius="8px"
+                    px={5}
+                    py={5}
+                    boxShadow="0 10px 24px rgba(15, 23, 42, 0.06)"
+                  >
+                    <TemperatureChart
+                      data={temperatureData}
+                      title="Temperature"
                     />
                   </Box>
                 </SimpleGrid>
