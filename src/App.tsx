@@ -46,6 +46,8 @@ import type { InputBehaviour, InputBehaviourKind, InputButton } from "./types/mi
 import type { InfoPanelMode } from "./types/info-panel";
 import { getInfoPanelTitle } from "./utils/info-panel";
 
+type ConnectionDisplayStatus = "connected" | "disconnected" | "reconnecting";
+
 function formatInputButton(button: InputButton) {
   if (button === "Logo") return "Logo";
   if (button === "AB") return "Buttons A+B";
@@ -100,6 +102,7 @@ function App() {
   const mbConnector = useMemo(() => new BlueToothConnector(), []);
   const [mode, setMode] = useState<"landing" | "connected">("landing");
   const [isConnecting, setIsConnecting] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionDisplayStatus>("disconnected");
   const [isMicrobitShaking, setIsMicrobitShaking] = useState(false);
   const [infoPanelMode, setInfoPanelMode] = useState<InfoPanelMode>("default");
   const [lockInfoPanel, setLockInfoPanel] = useState<boolean>(false);
@@ -220,22 +223,27 @@ function App() {
 
     mbConnector.setOnNoAuthorizedDevice(() => {
       console.log("NoAuthorizedDevice");
+      setConnectionStatus("disconnected");
     });
 
     mbConnector.setOnDisconnect(() => {
       console.log("Disconnect");
+      setConnectionStatus("disconnected");
     });
 
     mbConnector.setOnConnect(() => {
       console.log("Connect");
+      setConnectionStatus("connected");
     });
 
     mbConnector.setOnConnecting(() => {
       console.log("Connecting");
+      setConnectionStatus("reconnecting");
     });
 
     mbConnector.setOnPause(() => {
       console.log("Pause");
+      setConnectionStatus("disconnected");
     });
 
     mbConnector.setOnButtonADown(() => {
@@ -366,6 +374,7 @@ function App() {
   const handleConnect = useCallback(() => {
     if (isConnecting) return;
     setIsConnecting(true);
+    setConnectionStatus("reconnecting");
     const connectPromise = mbConnector.handleConnect();
 
     toast.promise(connectPromise, {
@@ -375,10 +384,34 @@ function App() {
     });
 
     connectPromise
-      .then(() => setMode("connected"))
-      .catch(() => setMode("landing"))
+      .then(() => {
+        setMode("connected");
+        setConnectionStatus("connected");
+      })
+      .catch(() => {
+        setMode("landing");
+        setConnectionStatus("disconnected");
+      })
       .finally(() => setIsConnecting(false));
   }, [mbConnector, isConnecting, toast]);
+
+  const handleReconnect = useCallback(() => {
+    if (isConnecting || connectionStatus === "connected") return;
+    setIsConnecting(true);
+    setConnectionStatus("reconnecting");
+    const reconnectPromise = mbConnector.handleReconnect();
+
+    toast.promise(reconnectPromise, {
+      loading: { title: "Reconnecting to the Micro:bit..." },
+      success: { title: "Micro:bit reconnected!" },
+      error: { title: "Unable to reconnect to the Micro:bit." },
+    });
+
+    reconnectPromise
+      .then(() => setConnectionStatus("connected"))
+      .catch(() => setConnectionStatus("disconnected"))
+      .finally(() => setIsConnecting(false));
+  }, [connectionStatus, isConnecting, mbConnector, toast]);
 
   const handleFlashDemo = () => {
     const flash = async () => {
@@ -408,7 +441,40 @@ function App() {
 
   const isDesktopSidebarVisible = mode === "connected" && Boolean(isLargeScreen);
   const isMobileInfoDrawerOpen = mode === "connected" && !isLargeScreen && infoDisclosure.isOpen;
-  const currentInputDisplay = latestInputBehaviour
+  const connectionStatusDisplay = connectionStatus === "connected"
+    ? {
+      label: "Connected",
+      colorScheme: "green",
+      bg: "green.50",
+      color: "green.700",
+      borderColor: "green.100",
+      icon: <CheckCircleIcon />,
+    }
+    : connectionStatus === "reconnecting"
+      ? {
+        label: "Reconnecting...",
+        colorScheme: "yellow",
+        bg: "yellow.50",
+        color: "yellow.800",
+        borderColor: "yellow.200",
+        icon: <RepeatIcon />,
+      }
+      : {
+        label: "Disconnected",
+        colorScheme: "red",
+        bg: "red.50",
+        color: "red.700",
+        borderColor: "red.100",
+        icon: <InfoOutlineIcon />,
+      };
+  const currentInputDisplay = connectionStatus !== "connected"
+    ? {
+      component: "Connection",
+      event: connectionStatus === "reconnecting" ? "Reconnecting..." : "Disconnected",
+      visualType: "Connection",
+      isIdle: false,
+    }
+    : latestInputBehaviour
     ? {
       component: formatInputButton(latestInputBehaviour.button),
       event: latestInputBehaviour.label,
@@ -459,21 +525,34 @@ function App() {
           <Heading size={{ base: "sm", md: "md" }}>Digital Twin</Heading>
           {mode === "connected" && (
             <Badge
-              colorScheme="green"
+              colorScheme={connectionStatusDisplay.colorScheme}
               px={4}
               py={2}
               borderRadius="md"
               border="1px solid"
-              borderColor="green.100"
-              bg="green.50"
-              color="green.700"
+              borderColor={connectionStatusDisplay.borderColor}
+              bg={connectionStatusDisplay.bg}
+              color={connectionStatusDisplay.color}
               display={{ base: "none", md: "inline-flex" }}
               alignItems="center"
               gap={2}
             >
-              <CheckCircleIcon />
-              Connected
+              {connectionStatusDisplay.icon}
+              {connectionStatusDisplay.label}
             </Badge>
+          )}
+          {mode === "connected" && connectionStatus === "disconnected" && (
+            <Button
+              leftIcon={<RepeatIcon />}
+              colorScheme="red"
+              variant="outline"
+              size="sm"
+              display={{ base: "none", md: "inline-flex" }}
+              onClick={handleReconnect}
+              isLoading={isConnecting}
+            >
+              Reconnect
+            </Button>
           )}
         </HStack>
         <Spacer />
@@ -627,6 +706,8 @@ function App() {
                       ) : currentInputDisplay.visualType === "Logo" ? (
                         <AtSignIcon boxSize={6} />
                       ) : currentInputDisplay.visualType === "AB" ? (
+                        <RepeatIcon boxSize={6} />
+                      ) : currentInputDisplay.visualType === "Connection" ? (
                         <RepeatIcon boxSize={6} />
                       ) : !currentInputDisplay.isIdle ? (
                         <CheckCircleIcon boxSize={6} />

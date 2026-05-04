@@ -41,6 +41,14 @@ export class BlueToothConnector extends BaseConnector {
     public getTemperaturePollPeriod(): number | null { return this.temperaturePollPeriod }
 
     public async handleConnect(): Promise<void> {
+        await this.connect();
+    }
+
+    public async handleReconnect(): Promise<void> {
+        await this.connect();
+    }
+
+    private async connect(): Promise<void> {
         await this.conn.connect();
         await this.waitForConnect();
     }

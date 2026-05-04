@@ -30,6 +30,7 @@ export type InputBehaviour = {
 
 export abstract class MicrobitConnector {
     abstract handleConnect(): Promise<void>;
+    abstract handleReconnect(): Promise<void>;
 
     abstract getLEDPollPeriod(): number | null;
     abstract getAccelerometerPollPeriod(): number | null;
