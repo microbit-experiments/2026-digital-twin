@@ -15,7 +15,7 @@ function MakeCodeReferenceFrame({ panel }: { panel: InfoPanelData }) {
         py={4}
       >
         <Text color="gray.600" fontSize="sm">
-          Select an input event to show the matching MakeCode reference and interactive micro:bit demo.
+          Waiting for input from your Micro:bit. Perform an action to see the docs.
         </Text>
       </Box>
     );

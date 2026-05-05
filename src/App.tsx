@@ -475,23 +475,23 @@ function App() {
       isIdle: false,
     }
     : latestInputBehaviour
-    ? {
-      component: formatInputButton(latestInputBehaviour.button),
-      event: latestInputBehaviour.label,
-      visualType: latestInputBehaviour.button,
-      isIdle: false,
-    }
-    : infoPanelMode === "shake"
-      ? { component: "Gesture", event: "Shake", visualType: "Gesture", isIdle: false }
-      : infoPanelMode === "buttonA"
-        ? { component: "Button A", event: "Selected", visualType: "A", isIdle: false }
-        : infoPanelMode === "buttonB"
-          ? { component: "Button B", event: "Selected", visualType: "B", isIdle: false }
-          : infoPanelMode === "logo"
-            ? { component: "Logo", event: "Selected", visualType: "Logo", isIdle: false }
-            : infoPanelMode === "microphone"
-              ? { component: "Microphone", event: "Selected", visualType: "Microphone", isIdle: false }
-              : { component: "Status", event: "Idle", visualType: null, isIdle: true };
+      ? {
+        component: formatInputButton(latestInputBehaviour.button),
+        event: latestInputBehaviour.label,
+        visualType: latestInputBehaviour.button,
+        isIdle: false,
+      }
+      : infoPanelMode === "shake"
+        ? { component: "Gesture", event: "Shake", visualType: "Gesture", isIdle: false }
+        : infoPanelMode === "buttonA"
+          ? { component: "Button A", event: "Selected", visualType: "A", isIdle: false }
+          : infoPanelMode === "buttonB"
+            ? { component: "Button B", event: "Selected", visualType: "B", isIdle: false }
+            : infoPanelMode === "logo"
+              ? { component: "Logo", event: "Selected", visualType: "Logo", isIdle: false }
+              : infoPanelMode === "microphone"
+                ? { component: "Microphone", event: "Selected", visualType: "Microphone", isIdle: false }
+                : { component: "Status", event: "Idle", visualType: null, isIdle: true };
 
   return (
     <Container maxW="100%" minH="100vh" px={0} bg="#f7f9fc">
@@ -600,8 +600,7 @@ function App() {
               <CardHeader textAlign="center">
                 <Heading size="lg">Connect Your Microbit</Heading>
                 <Text mt={2} color="gray.600">
-                  Bring a Micro:bit to life with a dummy connector that simulates real events before
-                  you have the hardware in hand.
+                  Connect your Micro:bit via Bluetooth, to explore and visualize a live digital twin that mirrors its behaviour in real time.
                 </Text>
               </CardHeader>
               <CardBody>
