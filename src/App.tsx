@@ -13,6 +13,7 @@ import {
   Heading,
   Image,
   Stack,
+  Progress,
   Text,
   useToast,
   Box,
@@ -413,7 +414,29 @@ function App() {
       .finally(() => setIsConnecting(false));
   }, [connectionStatus, isConnecting, mbConnector, toast]);
 
-  const handleFlashDemo = () => {
+  const handleFlashDemo = async () => {
+    const id = toast({
+      duration: null,
+      isClosable: false,
+      status: "loading",
+      render: () => (
+        <Box
+            bg="white"
+            border="1px solid"
+            borderColor="gray.200"
+            borderRadius="8px"
+            boxShadow="0 14px 32px rgba(15, 23, 42, 0.08)"
+            px={{ base: 4, md: 6 }}
+            py={{ base: 4, md: 5 }}
+        >
+          <Stack>
+            <Text>Flashing Demo Program...</Text>
+            <Progress value={0} max={100} />
+          </Stack>
+        </Box>
+      )
+    });
+
     const flash = async () => {
       const usb = createUSBConnection();
       await usb.connect();
@@ -423,21 +446,47 @@ function App() {
 
       await usb.flash(createUniversalHexFlashDataSource(universalHexString), {
         partial: true,
-        // TODO: Add flashing percentage
-        // progress: (percentage: number | undefined) => {
-        //   console.log("Flashing: " + percentage);
-        // },
+        progress: (_, percentage) => { 
+          if (percentage !== undefined) {
+            toast.update(id, {
+              render: () => (
+                <Box
+                  bg="white"
+                  border="1px solid"
+                  borderColor="gray.200"
+                  borderRadius="8px"
+                  boxShadow="0 14px 32px rgba(15, 23, 42, 0.08)"
+                  px={{ base: 4, md: 6 }}
+                  py={{ base: 4, md: 5 }}
+                >
+                  <Stack>
+                    <Text>Flashing Demo Program...</Text>
+                    <Progress value={Math.round(percentage * 100)} max={100} />
+                  </Stack>
+                </Box>
+              )
+            })
+          }
+        }
+      })
+    }
+
+    try {
+      await flash();
+
+      toast.close(id);
+      toast ({ 
+        title: "Demo Program flashed!",
+        status: "success"
       });
-    };
-
-    const flashingPromise = flash();
-
-    toast.promise(flashingPromise, {
-      loading: { title: "Flashing..." },
-      success: { title: "Demo Program Successfully Flashed!" },
-      error: { title: "Failed to Flash Demo Program :(" }
-    })
-  };
+    } catch {
+      toast.close(id);
+      toast({
+        title: "Demo Program failed to flash.",
+        status: "error"
+      })
+    }
+  }
 
   const isDesktopSidebarVisible = mode === "connected" && Boolean(isLargeScreen);
   const isMobileInfoDrawerOpen = mode === "connected" && !isLargeScreen && infoDisclosure.isOpen;
