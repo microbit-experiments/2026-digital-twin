@@ -187,10 +187,9 @@ function App() {
       }, 1200);
     };
 
-    // TODO Replace placeholder handlers
     mbConnector.setOnTiltUp(() => {
       showGestureInput("tiltUp", "Tilt up");
-      setRotateXDeg(20);
+      setRotateXDeg(-20);
       
       if (tiltXTimeoutRef.current !== null) {
         window.clearTimeout(tiltXTimeoutRef.current);
@@ -204,7 +203,7 @@ function App() {
 
     mbConnector.setOnTiltDown(() => {
       showGestureInput("tiltDown", "Tilt down");
-      setRotateXDeg(-20);
+      setRotateXDeg(20);
       
       if (tiltXTimeoutRef.current !== null) {
         window.clearTimeout(tiltXTimeoutRef.current);
