@@ -13,7 +13,6 @@ import {
   Heading,
   Image,
   Stack,
-  Progress,
   Text,
   useToast,
   Box,
@@ -30,7 +29,6 @@ import {
   HStack,
   SimpleGrid,
 } from "@chakra-ui/react";
-import { IoPause, IoPlay } from "react-icons/io5";
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import "./App.css";
 import MicrobitSVG from "./assets/microbit-drawing.svg?react";
@@ -109,22 +107,12 @@ function App() {
   const [infoPanelMode, setInfoPanelMode] = useState<InfoPanelMode>("default");
   const [lockInfoPanel, setLockInfoPanel] = useState<boolean>(false);
   const [latestInputBehaviour, setLatestInputBehaviour] = useState<InputBehaviour | null>(null);
-  const [rotateXDeg, setRotateXDeg] = useState(0);
-  const [rotateYDeg, setRotateYDeg] = useState(0);
   const [accelerometerData, setAccelerometerData] = useState<SensorPoint[]>([]);
   const [magnetometerData, setMagnetometerData] = useState<SensorPoint[]>([]);
   const [temperatureData, setTemperatureData] = useState<TemperaturePoint[]>([]);
-  const [accelerometerPaused, setAccelerometerPaused] = useState(false);
-  const [magnetometerPaused, setMagnetometerPaused] = useState(false);
-  const [temperaturePaused, setTemperaturePaused] = useState(false);
   const shakeTimeoutRef = useRef<number | null>(null);
   const idleTimeoutRef = useRef<number | null>(null);
-  const tiltXTimeoutRef = useRef<number | null>(null);
-  const tiltYTimeoutRef = useRef<number | null>(null);
   const activeInputsRef = useRef(new Set<InputButton>());
-  const accelerometerPausedRef = useRef(accelerometerPaused);
-  const magnetometerPausedRef = useRef(magnetometerPaused);
-  const temperaturePausedRef = useRef(temperaturePaused);
   const infoDisclosure = useDisclosure();
   const isLargeScreen = useBreakpointValue({ base: false, lg: true });
   const svgWidth = useBreakpointValue({
@@ -156,18 +144,12 @@ function App() {
   }, []);
 
   useEffect(() => {
-    return () => {      
+    return () => {
       if (shakeTimeoutRef.current !== null) {
         window.clearTimeout(shakeTimeoutRef.current);
       }
       if (idleTimeoutRef.current !== null) {
         window.clearTimeout(idleTimeoutRef.current);
-      }
-      if (tiltXTimeoutRef.current !== null) {
-        window.clearTimeout(tiltXTimeoutRef.current);
-      }
-      if (tiltYTimeoutRef.current !== null) {
-        window.clearTimeout(tiltYTimeoutRef.current);
       }
     };
   }, []);
@@ -189,58 +171,23 @@ function App() {
 
     // TODO Replace placeholder handlers
     mbConnector.setOnTiltUp(() => {
+      console.log("tiltUp");
       showGestureInput("tiltUp", "Tilt up");
-      setRotateXDeg(20);
-      
-      if (tiltXTimeoutRef.current !== null) {
-        window.clearTimeout(tiltXTimeoutRef.current);
-      }
-
-      tiltXTimeoutRef.current = window.setTimeout(() => {
-        setRotateXDeg(0);
-        tiltXTimeoutRef.current = null;
-      }, 1200);
     });
 
     mbConnector.setOnTiltDown(() => {
+      console.log("tiltDown");
       showGestureInput("tiltDown", "Tilt down");
-      setRotateXDeg(-20);
-      
-      if (tiltXTimeoutRef.current !== null) {
-        window.clearTimeout(tiltXTimeoutRef.current);
-      }
-
-      tiltXTimeoutRef.current = window.setTimeout(() => {
-        setRotateXDeg(0);
-        tiltXTimeoutRef.current = null;
-      }, 1200);
     });
 
     mbConnector.setOnTiltLeft(() => {
+      console.log("tiltLeft");
       showGestureInput("tiltLeft", "Tilt left");
-      setRotateYDeg(-25);
-      
-      if (tiltYTimeoutRef.current !== null) {
-        window.clearTimeout(tiltYTimeoutRef.current);
-      }
-      tiltYTimeoutRef.current = window.setTimeout(() => {
-        setRotateYDeg(0);
-        tiltYTimeoutRef.current = null;
-      }, 1200);
     });
 
     mbConnector.setOnTiltRight(() => {
+      console.log("tiltRight");
       showGestureInput("tiltRight", "Tilt right");
-      setRotateYDeg(25);
-
-      if (tiltYTimeoutRef.current !== null) {
-        window.clearTimeout(tiltYTimeoutRef.current);
-      }
-
-      tiltYTimeoutRef.current = window.setTimeout(() => {
-        setRotateYDeg(0);
-        tiltYTimeoutRef.current = null;
-      }, 1200);
     });
 
     mbConnector.setOnFaceUp(() => {
@@ -349,6 +296,7 @@ function App() {
       console.log("Input behaviour: ", `${formatInputButton(input.button)} ${input.label}`);
 
       if (shouldDisplay || isActiveStart(input.behaviour)) {
+        console.log()
         if (input.button === "A") setInfoPanelModeHelper("buttonA");
         if (input.button === "B") setInfoPanelModeHelper("buttonB");
         if (input.button === "Logo") setInfoPanelModeHelper("logo");
@@ -382,7 +330,6 @@ function App() {
 
     mbConnector.setAccelerometerUpdate((x, y, z) => {
       setAccelerometerData((previous) => {
-        if (accelerometerPausedRef.current) return previous;
         const next = [...previous, { time: Date.now(), x, y, z }];
         return next.slice(-150);
       });
@@ -390,7 +337,6 @@ function App() {
 
     mbConnector.setMagnetometerUpdate((x, y, z) => {
       setMagnetometerData((previous) => {
-        if (magnetometerPausedRef.current) return previous;
         const next = [...previous, { time: Date.now(), x, y, z }];
         return next.slice(-150);
       });
@@ -399,7 +345,6 @@ function App() {
     mbConnector.setTemperatureUpdate((temp) => {
       console.log("Temperature: ", temp);
       setTemperatureData((previous) => {
-        if (temperaturePausedRef.current) return previous;
         const next = [...previous, { time: Date.now(), temp }];
         return next.slice(-150);
       });
@@ -434,8 +379,8 @@ function App() {
 
     toast.promise(connectPromise, {
       loading: { title: "Connecting to the Micro:bit…" },
-      success: { title: "Micro:bit is connected!" },
-      error: { title: "Unable to connect to the Micro:bit." },
+      success: { title: "Dummy Micro:bit is connected!" },
+      error: { title: "Unable to connect to the dummy Micro:bit." },
     });
 
     connectPromise
@@ -468,29 +413,7 @@ function App() {
       .finally(() => setIsConnecting(false));
   }, [connectionStatus, isConnecting, mbConnector, toast]);
 
-  const handleFlashDemo = async () => {
-    const id = toast({
-      duration: null,
-      isClosable: false,
-      status: "loading",
-      render: () => (
-        <Box
-            bg="white"
-            border="1px solid"
-            borderColor="gray.200"
-            borderRadius="8px"
-            boxShadow="0 14px 32px rgba(15, 23, 42, 0.08)"
-            px={{ base: 4, md: 6 }}
-            py={{ base: 4, md: 5 }}
-        >
-          <Stack>
-            <Text>Flashing Demo Program...</Text>
-            <Progress value={0} max={100} />
-          </Stack>
-        </Box>
-      )
-    });
-
+  const handleFlashDemo = () => {
     const flash = async () => {
       const usb = createUSBConnection();
       await usb.connect();
@@ -500,47 +423,21 @@ function App() {
 
       await usb.flash(createUniversalHexFlashDataSource(universalHexString), {
         partial: true,
-        progress: (_, percentage) => { 
-          if (percentage !== undefined) {
-            toast.update(id, {
-              render: () => (
-                <Box
-                  bg="white"
-                  border="1px solid"
-                  borderColor="gray.200"
-                  borderRadius="8px"
-                  boxShadow="0 14px 32px rgba(15, 23, 42, 0.08)"
-                  px={{ base: 4, md: 6 }}
-                  py={{ base: 4, md: 5 }}
-                >
-                  <Stack>
-                    <Text>Flashing Demo Program...</Text>
-                    <Progress value={Math.round(percentage * 100)} max={100} />
-                  </Stack>
-                </Box>
-              )
-            })
-          }
-        }
-      })
-    }
-
-    try {
-      await flash();
-
-      toast.close(id);
-      toast ({ 
-        title: "Demo Program flashed!",
-        status: "success"
+        // TODO: Add flashing percentage
+        // progress: (percentage: number | undefined) => {
+        //   console.log("Flashing: " + percentage);
+        // },
       });
-    } catch {
-      toast.close(id);
-      toast({
-        title: "Demo Program failed to flash.",
-        status: "error"
-      })
-    }
-  }
+    };
+
+    const flashingPromise = flash();
+
+    toast.promise(flashingPromise, {
+      loading: { title: "Flashing..." },
+      success: { title: "Demo Program Successfully Flashed!" },
+      error: { title: "Failed to Flash Demo Program :(" }
+    })
+  };
 
   const isDesktopSidebarVisible = mode === "connected" && Boolean(isLargeScreen);
   const isMobileInfoDrawerOpen = mode === "connected" && !isLargeScreen && infoDisclosure.isOpen;
@@ -760,7 +657,6 @@ function App() {
                       transformOrigin="center center"
                       cursor="pointer"
                       onClick={handleMicrobitDrawingClick}
-                      style={{ perspective: "800px" }}
                       animation={isMicrobitShaking ? "microbitShake 350ms ease-in-out" : undefined}
                       sx={{
                         "& svg #ButtonA, & svg #ButtonB, & svg #Logo, & svg #LogoBackground, & svg #MicrophoneHole, & svg #UnlitMicrophone, & svg #LitMicrophone": {
@@ -776,14 +672,7 @@ function App() {
                         },
                       }}
                     >
-                      <MicrobitSVG 
-                        width = {svgWidth ?? "320px"} 
-                        style= {{
-                          transform: `rotateX(${rotateXDeg}deg) rotateY(${rotateYDeg}deg)`,
-                          transition: "transform 1s",
-                          transformOrigin: "center",
-                        }}
-                      />
+                      <MicrobitSVG width={svgWidth ?? "320px"} />
                     </Box>
                   </Center>
 
@@ -871,20 +760,7 @@ function App() {
                       data={accelerometerData}
                       title="Accelerometer"
                       maxVal={2000}
-                    />
-                    <IconButton
-                      aria-label='Search database'
-                      icon={accelerometerPaused ? <IoPlay /> : <IoPause />}
-                      size={"sm"}
-                      onClick={() => {
-                        setAccelerometerPaused((p) => {
-                          accelerometerPausedRef.current = !p;
-                          if (p) {
-                            setAccelerometerData((_) => []);
-                          }
-                          return !p;
-                        });
-                      }}
+                      showLegend
                     />
                   </Box>
                   <Box
@@ -901,20 +777,6 @@ function App() {
                       title="Magnetometer"
                       maxVal={50000}
                     />
-                    <IconButton
-                      aria-label='Search database'
-                      icon={magnetometerPaused ? <IoPlay /> : <IoPause />}
-                      size={"sm"}
-                      onClick={() => {
-                        setMagnetometerPaused((p) => {
-                          magnetometerPausedRef.current = !p;
-                          if (p) {
-                            setMagnetometerData((_) => []);
-                          }
-                          return !p;
-                        });
-                      }}
-                    />
                   </Box>
 
                   <Box
@@ -929,20 +791,6 @@ function App() {
                     <TemperatureChart
                       data={temperatureData}
                       title="Temperature"
-                    />
-                    <IconButton
-                      aria-label='Search database'
-                      icon={temperaturePaused ? <IoPlay /> : <IoPause />}
-                      size={"sm"}
-                      onClick={() => {
-                        setTemperaturePaused((p) => {
-                          temperaturePausedRef.current = !p;
-                          if (p) {
-                            setTemperatureData((_) => []);
-                          }
-                          return !p;
-                        });
-                      }}
                     />
                   </Box>
                 </SimpleGrid>
